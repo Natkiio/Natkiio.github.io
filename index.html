@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nathan Lyons — Database Engineer // NL-OS</title>
+<meta name="description" content="Interactive terminal CV of Nathan Lyons — database engineer and developer based in Cork, Ireland.">
+<meta name="theme-color" content="#050607">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   NL-OS — palette + type lifted from "Cyberpunk HUD V2"
+   (City of the Dark Future vault). 2018 demo HUD:
+   red banners, grey record frames, mint readouts, scanlines.
+   ========================================================= */
+:root{
+  --red:#ff1f4b; --red-soft:#ff4d6d; --red-dim:#7a1428; --red-glow:rgba(255,31,75,.55);
+  --mint:#a9f2e6; --mint-dim:#5f9e95; --mint-glow:rgba(169,242,230,.45);
+  --bg-0:#050607; --bg-1:#0b0d0e; --bg-2:#111415; --bg-3:#181c1d;
+  --frame:#8f9898; --frame-dim:#3c4444;
+  --label:#c4cccc; --value:#e8eded; --muted:#7d8787; --faint:#4a5252;
+  --ink-on-red:#120206;
+
+  --f-label:"Michroma","Eurostile","Bank Gothic",sans-serif;
+  --f-text:"Rajdhani","Bahnschrift",sans-serif;
+  --f-mono:"Share Tech Mono",ui-monospace,Menlo,Consolas,monospace;
+
+  --barcode:
+    repeating-linear-gradient(90deg,
+      var(--red) 0 4px, transparent 4px 6px, var(--red) 6px 7px,
+      transparent 7px 10px, var(--red) 10px 16px, transparent 16px 17px,
+      var(--red) 17px 18px, transparent 18px 23px),
+    repeating-linear-gradient(90deg,
+      transparent 0 9px, var(--red) 9px 12px, transparent 12px 31px,
+      var(--red) 31px 33px, transparent 33px 37px);
+  --segbar:
+    linear-gradient(90deg,
+      var(--mint) 0 9%, transparent 9% 10.5%,
+      var(--mint) 10.5% 24%, transparent 24% 24.6%,
+      var(--mint) 24.6% 25.4%, transparent 25.4% 26%,
+      var(--mint) 26% 38%, transparent 38% 38.8%,
+      var(--mint) 38.8% 82%, transparent 82%) left / 100% 100% no-repeat,
+    repeating-linear-gradient(90deg,
+      var(--mint) 0 2px, transparent 2px 3px, var(--mint) 3px 6px, transparent 6px 8px) right / 15% 100% no-repeat;
+
+  --fs: clamp(14px, .4vw + 10px, 16px);
+  --hud-w: 340px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; color:var(--value); font:var(--fs)/1.55 var(--f-mono);
+  background:
+    radial-gradient(900px 520px at 100% 0%, rgba(255,31,75,.07), transparent 70%),
+    radial-gradient(700px 420px at 0% 100%, rgba(169,242,230,.035), transparent 70%),
+    var(--bg-1);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+::selection{ background:rgba(255,31,75,.35); color:#fff }
+a{color:inherit}
+::-webkit-scrollbar{ width:5px; height:5px }
+::-webkit-scrollbar-track{ background:transparent }
+::-webkit-scrollbar-thumb{ background:var(--frame-dim) }
+::-webkit-scrollbar-thumb:hover{ background:var(--red) }
+
+/* ── scanlines + CRT ─────────────────────────────────── */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:60;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);
+  animation:flick 5s steps(1) infinite;
+}
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:61;
+  background:radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.6) 100%);
+}
+@keyframes flick{ 0%,100%{opacity:1} 47%{opacity:.82} 48%{opacity:1} 83%{opacity:.9} 84%{opacity:1} }
+.scanbar{
+  position:fixed; left:0; right:0; top:-140px; height:140px; z-index:62; pointer-events:none;
+  background:linear-gradient(to bottom, transparent, rgba(255,31,75,.045) 60%, rgba(255,255,255,.035) 62%, transparent);
+  animation:roll 8s linear infinite;
+}
+@keyframes roll{ to{ transform:translateY(calc(100dvh + 280px)) } }
+
+/* ── shell ───────────────────────────────────────────── */
+.shell{ display:grid; grid-template-rows:auto minmax(0,1fr) auto; grid-template-columns:minmax(0,1fr); height:100dvh }
+
+.topbar{
+  position:relative; display:flex; align-items:center; gap:14px; height:46px; padding:0 16px;
+  background:var(--bg-0); border-bottom:1px solid var(--frame-dim); min-width:0;
+}
+.topbar::after{ content:""; position:absolute; left:12px; right:12px; bottom:-1px; height:3px; background:var(--segbar); opacity:.85; pointer-events:none }
+.topbar > *{ flex-shrink:0 }
+.logo{ font:400 13px/1 var(--f-label); letter-spacing:.14em; color:var(--red); text-shadow:0 0 12px var(--red-glow) }
+.logo b{ color:var(--value); font-weight:400 }
+.tabs{ display:flex; gap:4px; margin-left:10px }
+.tab{
+  font:400 9.5px/1 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+  background:transparent; border:1px solid transparent; padding:8px 12px; cursor:pointer;
+}
+.tab:hover, .tab:focus-visible{ color:var(--value); border-color:var(--frame-dim); outline:none }
+.tab.on{ color:var(--red); border-color:var(--red); background:var(--bg-1); box-shadow:0 0 10px var(--red-glow); cursor:default }
+.topbar .spacer{ flex:1 }
+.readout{ font:12px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--red) }
+.readout.dim{ color:var(--muted) }
+
+.main{ display:grid; grid-template-columns:minmax(0,1fr) var(--hud-w); min-height:0 }
+
+/* ── terminal ────────────────────────────────────────── */
+.term{
+  container:term / inline-size; overflow-y:auto; overscroll-behavior:contain;
+  padding:22px 30px 30px; min-height:0; cursor:text; scrollbar-width:thin; scrollbar-color:var(--frame-dim) transparent;
+}
+.ln{ white-space:pre-wrap; overflow-wrap:anywhere; min-height:1.55em }
+.ln.in{ animation:lnIn .16s ease-out both }
+@keyframes lnIn{ from{opacity:0; transform:translateX(-5px)} to{opacity:1; transform:none} }
+.ln.in .rec, .ln.in .opts, .ln.in .fgrid{ animation:wipe .32s steps(7) both }
+@keyframes wipe{ from{ clip-path:inset(0 0 100% 0) } to{ clip-path:inset(0 0 0 0) } }
+
+.ps1{ white-space:nowrap; color:var(--faint) }
+.ps1 .u{ color:var(--red) } .ps1 .hst{ color:var(--label) } .ps1 .cwd{ color:var(--mint) }
+.echo{ margin-top:.35em }
+.echo .typed{ color:var(--value) }
+.prompt-line{ display:flex; align-items:baseline; gap:1ch; margin-top:.35em }
+#cmd{
+  flex:1; min-width:0; background:transparent; border:0; outline:0; padding:0; margin:0;
+  font:inherit; color:var(--value); caret-color:var(--red); caret-shape:block;
+}
+#cmd::placeholder{ color:var(--faint) }
+
+/* red quest banner ("BREAKING THROUGH") */
+.hb{
+  display:inline-block; margin:.75em 0 .8em; padding:.5em .85em .42em;
+  font:400 .9em/1 var(--f-label); letter-spacing:.14em; text-transform:uppercase;
+  background:var(--red); color:var(--ink-on-red); -webkit-text-stroke:.5px var(--ink-on-red);
+  transform:rotate(-1.2deg); transform-origin:left center; box-shadow:0 0 22px var(--red-glow);
+}
+.hb.alt{ background:var(--mint); box-shadow:0 0 22px var(--mint-glow) }
+/* wide-spaced label with long rule ("BACKSTORY") */
+.lbl{
+  display:block; max-width:92ch; padding-bottom:.55em; margin:.4em 0 .5em; border-bottom:1px solid var(--frame-dim);
+  font:400 .66em/1.2 var(--f-label); letter-spacing:.16em; text-transform:uppercase; color:var(--label);
+}
+.lbl.red{ color:var(--red) }
+
+.m{ color:var(--label) } .d{ color:var(--muted) } .f{ color:var(--faint) }
+.ok{ color:var(--mint) } .red{ color:var(--red) } .mint{ color:var(--mint) }
+.err{ color:var(--red-soft) }
+.errtag{ background:var(--red); color:var(--ink-on-red); padding:.1em .6em; font:400 .62em/1 var(--f-label); letter-spacing:.14em; vertical-align:.15em }
+.draft{ display:inline-block; margin-left:.8em; border:1px solid var(--red); color:var(--red); padding:.15em .6em; font:400 .85em/1 var(--f-label); letter-spacing:.14em; box-shadow:0 0 8px var(--red-glow) }
+.k{ display:inline-block; min-width:10ch; color:var(--muted); text-transform:uppercase; letter-spacing:.08em }
+
+button.c, a.c{
+  font:inherit; color:var(--red-soft); background:none; border:0; padding:0 .1em; cursor:pointer;
+  text-decoration:none; border-bottom:1px solid var(--red-dim);
+}
+button.c:hover, button.c:focus-visible, a.c:hover, a.c:focus-visible{
+  background:var(--red); color:var(--ink-on-red); border-color:var(--red); outline:none; box-shadow:0 0 10px var(--red-glow);
+}
+a.c.ext{ color:var(--mint); border-bottom-color:var(--mint-dim) }
+a.c.ext:hover, a.c.ext:focus-visible{ background:var(--mint); color:var(--bg-0); border-color:var(--mint); box-shadow:0 0 10px var(--mint-glow) }
+
+/* ── record panels (character-creator cards) ─────────── */
+.rec, .opts, .fgrid{ white-space:normal }
+.rec{
+  position:relative; max-width:92ch; margin:.3em 0 .9em; padding:.75em 1.05em .95em;
+  border:1px solid var(--frame); background:rgba(5,6,7,.6);
+  font:500 1.12em/1.45 var(--f-text); letter-spacing:.015em;
+}
+.rec-l{
+  display:flex; justify-content:space-between; gap:1em; margin-bottom:.7em;
+  font:400 .56rem/1.3 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--label);
+}
+.rec-l span:last-child{ color:var(--muted); text-align:right; white-space:nowrap; flex-shrink:0 }
+.rec.sel{ border:2px solid var(--red); padding-bottom:2.3em; box-shadow:0 0 14px var(--red-glow), inset 0 0 18px rgba(255,31,75,.12) }
+.rec.sel > .rec-l span:first-child{ color:var(--red); text-shadow:0 0 8px var(--red-glow) }
+.rec.sel::after, .panel.sel::after, .opt::after{
+  content:""; position:absolute; left:6px; right:6px; bottom:6px; height:14px;
+  background:var(--barcode); filter:drop-shadow(0 0 4px var(--red-glow));
+}
+.rec p{ margin:0 0 .6em } .rec p:last-child{ margin-bottom:0 }
+.rec-t{ font:700 1.3em/1.1 var(--f-text); letter-spacing:.05em; text-transform:uppercase; color:#fff }
+.rec-s{ color:var(--muted); margin-top:.15em }
+.rec ul{ margin:.65em 0 0; padding-left:1.15em }
+.rec li{ list-style:square; margin:.18em 0 } .rec li::marker{ color:var(--red) }
+
+/* form grid (label above value) */
+.fgrid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 22ch), 1fr));
+  max-width:92ch; margin:.3em 0 .9em; border-top:1px solid var(--frame); border-left:1px solid var(--frame);
+  font:500 1.08em/1.4 var(--f-text);
+}
+.rec .fgrid{ margin:.8em 0 0; font-size:1em }
+.cell{ padding:.5em .9em .6em; border-right:1px solid var(--frame); border-bottom:1px solid var(--frame); min-width:0 }
+.cell.wide{ grid-column:1 / -1 }
+.fl{ display:block; margin-bottom:.35em; font:400 .52rem/1.3 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--label) }
+.fv{ display:block; color:var(--value); overflow-wrap:anywhere }
+.cell:hover{ background:rgba(255,31,75,.05) }
+
+.chip{
+  display:inline-block; margin:0 .35em .4em 0; padding:.35em .75em .3em; border:1px solid var(--frame);
+  font:400 .55rem/1.2 var(--f-label); letter-spacing:.12em; text-transform:uppercase; color:var(--label);
+  transition:border-color .12s, color .12s, background .12s;
+}
+.chip:hover{ border-color:var(--red); color:var(--red); background:rgba(255,31,75,.08) }
+
+/* option boxes (selectable records) */
+.opts{ display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 26ch), 1fr)); gap:10px; max-width:92ch; margin:.4em 0 .8em }
+.opt{
+  position:relative; display:block; text-align:left; cursor:pointer; color:var(--value);
+  background:rgba(5,6,7,.6); border:1px solid var(--frame); padding:.75em 1em 2.3em;
+  font:500 1.1em/1.35 var(--f-text); transition:border-color .12s, box-shadow .12s;
+}
+.opt .rec-l{ margin-bottom:.55em }
+.opt-t{ display:block; font-weight:700; font-size:1.15em; letter-spacing:.05em; text-transform:uppercase; color:#fff }
+.opt-s{ display:block; color:var(--muted); margin-top:.15em }
+.opt::after{ opacity:0; transition:opacity .15s }
+.opt:hover, .opt:focus-visible{ outline:none; border-color:var(--red); box-shadow:0 0 14px var(--red-glow), inset 0 0 18px rgba(255,31,75,.12) }
+.opt:hover::after, .opt:focus-visible::after{ opacity:1 }
+.opt:hover .opt-t, .opt:focus-visible .opt-t{ color:var(--red); text-shadow:0 0 8px var(--red-glow) }
+
+/* ascii banner */
+.banner{
+  margin:6px 0 0; line-height:1.04; white-space:pre; overflow:hidden; color:var(--red);
+  font-family:"Menlo","SF Mono",ui-monospace,monospace;  /* box-drawing glyphs need a full mono */
+  text-shadow:0 0 12px var(--red-glow), -2px 0 0 rgba(169,242,230,.28);
+}
+.banner.lg{ font-size:min(14px, 100cqw / 60) }
+.banner.sm{ display:none; font-size:min(14px, 100cqw / 36) }
+.banner-txt{ display:none; font:400 22px/1.15 var(--f-label); color:var(--red); letter-spacing:.1em; text-shadow:0 0 12px var(--red-glow) }
+@container term (max-width: 760px){ .banner.lg{display:none} .banner.sm{display:block} }
+@container term (max-width: 330px){ .banner.sm{display:none} .banner-txt.glitch{display:inline-block} }
+.segbar{ display:block; height:4px; max-width:min(100%, 98ch); background:var(--segbar); opacity:.85; margin:10px 0 14px }
+.tagline{ font:600 1.15em/1.3 var(--f-text); letter-spacing:.12em; text-transform:uppercase }
+
+.bar{ color:var(--red); text-shadow:0 0 6px var(--red-glow) } .bar .e{ color:var(--frame-dim); text-shadow:none }
+
+/* glitch */
+.glitch{ position:relative }
+span.glitch, div.glitch{ display:inline-block }
+.banner-txt.glitch{ display:none }
+.glitch::before,.glitch::after{ content:attr(data-text); position:absolute; inset:0; opacity:0; pointer-events:none; padding:inherit }
+.glitch::before{ color:var(--mint); animation:gl1 6.5s infinite steps(1) }
+.glitch::after { color:var(--red);  animation:gl2 6.5s infinite steps(1) }
+@keyframes gl1{
+  0%,90%,100%{opacity:0; transform:none}
+  91%{opacity:.9; transform:translate(-3px,1px); clip-path:inset(12% 0 55% 0)}
+  93%{opacity:.9; transform:translate(4px,-1px); clip-path:inset(62% 0 6% 0)}
+  95%{opacity:.9; transform:translate(-2px,0);   clip-path:inset(32% 0 38% 0)}
+  96%{opacity:0}
+}
+@keyframes gl2{
+  0%,91%,100%{opacity:0; transform:none}
+  92%{opacity:.85; transform:translate(3px,0);    clip-path:inset(48% 0 22% 0)}
+  94%{opacity:.85; transform:translate(-4px,1px); clip-path:inset(4% 0 74% 0)}
+  96%{opacity:0}
+}
+.glitch.now::before{ animation:gl1 .5s steps(1) 1 } .glitch.now::after{ animation:gl2 .5s steps(1) 1 }
+.hb.glitch::before{ color:var(--ink-on-red) } .hb.glitch::after{ color:#fff }
+
+/* ── HUD sidebar ─────────────────────────────────────── */
+.hud{
+  border-left:1px solid var(--frame-dim); background:rgba(5,6,7,.55);
+  overflow-y:auto; padding:18px 16px 24px; min-height:0; display:flex; flex-direction:column; gap:14px;
+  scrollbar-width:thin; scrollbar-color:var(--frame-dim) transparent;
+}
+.panel{ position:relative; border:1px solid var(--frame); padding:12px 14px 14px; background:rgba(11,13,14,.75) }
+.panel.sel{ border:2px solid var(--red); padding-bottom:34px; box-shadow:0 0 14px var(--red-glow), inset 0 0 18px rgba(255,31,75,.12) }
+.plabel{
+  display:flex; justify-content:space-between; margin-bottom:12px;
+  font:400 9px/1.2 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--label);
+}
+.plabel span:last-child{ color:var(--muted) }
+.panel.sel .plabel span:first-child{ color:var(--red); text-shadow:0 0 8px var(--red-glow) }
+.ident-name{ font:400 18px/1.15 var(--f-label); letter-spacing:.08em; text-transform:uppercase; color:#fff }
+.ident-role{ margin-top:8px; font:700 15px/1.2 var(--f-text); letter-spacing:.12em; text-transform:uppercase; color:var(--red); text-shadow:0 0 10px var(--red-glow) }
+.hud .fgrid{ margin:12px 0 0; font-size:15px; grid-template-columns:1fr 1fr }
+.hud .cell{ padding:.45em .7em .5em }
+.pulse{ display:inline-block; width:7px; height:7px; background:var(--mint); margin-right:7px; box-shadow:0 0 8px var(--mint); animation:pulse 1.6s ease-in-out infinite; vertical-align:1px }
+@keyframes pulse{ 50%{opacity:.3} }
+
+.qcmds{ display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.qbtn{
+  display:flex; align-items:center; gap:8px; min-height:38px; padding:9px 10px; cursor:pointer; text-align:left;
+  background:transparent; border:1px solid var(--frame-dim); color:var(--label);
+  font:400 9px/1.2 var(--f-label); letter-spacing:.12em; text-transform:uppercase;
+  transition:background .1s, color .1s, border-color .1s, box-shadow .1s;
+}
+.qbtn i{ font:normal 11px/1 var(--f-mono); color:var(--faint) }
+.qbtn.on{ border-color:var(--red); color:var(--red); box-shadow:0 0 10px var(--red-glow); background:var(--bg-1) }
+.qbtn:hover, .qbtn:focus-visible{ background:var(--red); color:var(--ink-on-red); border-color:var(--red); outline:none; box-shadow:0 0 12px var(--red-glow) }
+.qbtn:hover i, .qbtn:focus-visible i{ color:var(--ink-on-red) }
+.qbtn.wide{ grid-column:1 / -1; justify-content:space-between }
+
+.links{ display:flex; flex-direction:column; font:600 15px/1.2 var(--f-text); letter-spacing:.03em }
+.links a{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; text-decoration:none; border-bottom:1px dashed var(--frame-dim); color:var(--value) }
+.links a span:first-child{ font:400 9px/1.6 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--label) }
+.links a span:last-child{ color:var(--mint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.links a:hover span:first-child, .links a:focus-visible span:first-child{ color:var(--red) }
+.links a:focus-visible{ outline:1px solid var(--red); outline-offset:2px }
+
+.sys{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font:13px/1.5 var(--f-mono) }
+.sys span:nth-child(odd){ font:400 8.5px/2.2 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--muted) }
+.sys span:nth-child(even){ text-align:right; font-variant-numeric:tabular-nums; color:var(--value) }
+.sys .red{ color:var(--red) !important }
+
+/* ── status bar ("PROTOCOL 6520-A44") ─────────────────── */
+.statusbar{
+  display:flex; align-items:stretch; height:30px; background:var(--bg-0); border-top:1px solid var(--frame-dim);
+  font:12px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--red);
+}
+.seg{ display:flex; align-items:center; padding:0 14px; border-right:1px solid var(--frame-dim); white-space:nowrap }
+.seg.mode{ background:var(--red); color:var(--ink-on-red); font:400 9.5px/1 var(--f-label); letter-spacing:.16em; box-shadow:0 0 12px var(--red-glow) }
+.seg.mode.busy{ background:var(--mint); box-shadow:0 0 12px var(--mint-glow) }
+.seg.cwd{ color:var(--mint); text-transform:none }
+.ticker{ flex:1; overflow:hidden; display:flex; align-items:center; mask-image:linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent) }
+.ticker .track{ display:inline-flex; white-space:nowrap; padding-left:14px; animation:tick 70s linear infinite; color:var(--red-soft) }
+.ticker .track span{ padding-right:4em } .ticker .track b{ color:var(--value); font-weight:400 }
+@keyframes tick{ to{ transform:translateX(-50%) } }
+.seg.clock{ border-right:0; border-left:1px solid var(--frame-dim); color:var(--value); font-variant-numeric:tabular-nums }
+
+.chips{ display:none }
+
+@media (max-width: 900px){
+  :root{ --fs:14px }
+  .main{ grid-template-columns:minmax(0,1fr) }
+  .hud{ display:none }
+  .term{ padding:16px 16px 20px }
+  .chips{ display:flex; gap:6px; overflow-x:auto; padding:8px 12px; background:var(--bg-0); border-top:1px solid var(--frame-dim); scrollbar-width:none }
+  .chips .qbtn{ flex:none; min-height:42px }
+  .shell{ grid-template-rows:auto minmax(0,1fr) auto auto }
+  .tabs, .readout.dim{ display:none }
+  .seg.cwd, .ticker{ display:none }
+  .statusbar{ justify-content:space-between }
+  #cmd{ font-size:16px }
+}
+
+@media (prefers-reduced-motion: reduce){
+  body::before, .ticker .track, .pulse{ animation:none }
+  .scanbar, .glitch::before, .glitch::after{ display:none }
+  .ln.in, .ln.in .rec, .ln.in .opts, .ln.in .fgrid{ animation:none }
+}
+html[data-motion="off"] body::before, html[data-motion="off"] .ticker .track{ animation:none }
+html[data-motion="off"] .scanbar, html[data-motion="off"] .glitch::before, html[data-motion="off"] .glitch::after{ display:none }
+html[data-motion="off"] .ln.in, html[data-motion="off"] .ln.in .rec, html[data-motion="off"] .ln.in .opts, html[data-motion="off"] .ln.in .fgrid{ animation:none }
+html[data-scan="off"] body::before, html[data-scan="off"] .scanbar{ display:none }
+
+/* ── print: clean paper CV ───────────────────────────── */
+#print-cv{ display:none }
+@media print{
+  @page{ margin:15mm 16mm }
+  body{ background:#fff; color:#111; overflow:visible; font:500 11pt/1.4 "Rajdhani", "Bahnschrift", sans-serif }
+  body::before, body::after, .scanbar, .shell{ display:none !important }
+  #print-cv{ display:block }
+  #print-cv h1{ font:400 20pt/1 "Michroma", sans-serif; letter-spacing:.06em; text-transform:uppercase; margin:0 0 6pt }
+  #print-cv .sub{ color:#444; margin-bottom:8pt }
+  #print-cv h2{ font:400 8.5pt/1 "Michroma", sans-serif; letter-spacing:.2em; text-transform:uppercase;
+    border-bottom:1.2pt solid #111; padding-bottom:4pt; margin:13pt 0 5pt; break-after:avoid }
+  #print-cv .entry{ break-inside:avoid }
+  #print-cv .row{ display:flex; justify-content:space-between; gap:12pt; font-weight:700; margin-top:6pt; text-transform:uppercase; letter-spacing:.03em }
+  #print-cv .row span:last-child{ font-weight:500; color:#555; white-space:nowrap }
+  #print-cv ul{ margin:2pt 0 0; padding-left:13pt } #print-cv li{ margin:1pt 0; list-style:square }
+  #print-cv .meta{ color:#555; font-weight:500; text-transform:none; letter-spacing:0 }
+  #print-cv a{ color:#111; text-decoration:none }
+}
+</style>
+</head>
+<body>
+<div class="scanbar" aria-hidden="true"></div>
+
+<div class="shell">
+  <header class="topbar">
+    <span class="logo">NL<b>//</b>OS</span>
+    <nav class="tabs" aria-label="Views">
+      <span class="tab on">01 terminal</span>
+      <button class="tab" data-cmd="cv">02 full record</button>
+      <button class="tab" data-cmd="print">03 export.pdf</button>
+      <button class="tab" data-cmd="help">04 help</button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="readout dim" id="uptime">session 00:00:00</span>
+    <span class="readout">protocol 4e4c-a44</span>
+  </header>
+
+  <div class="main">
+    <main class="term" id="term" aria-label="Terminal">
+      <div id="out" role="log" aria-live="polite"></div>
+      <div class="prompt-line">
+        <span class="ps1" id="ps1"></span>
+        <label for="cmd" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Command</label>
+        <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="type help">
+      </div>
+    </main>
+
+    <aside class="hud" aria-label="Profile summary">
+      <section class="panel sel">
+        <div class="plabel"><span>ident // record</span><span>0x4e4c</span></div>
+        <div class="ident-name glitch" id="hudName"></div>
+        <div class="ident-role" id="hudRole"></div>
+        <div class="fgrid" id="hudGrid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="plabel"><span>run // command</span><span>click or type</span></div>
+        <div class="qcmds" id="qcmds"></div>
+      </section>
+
+      <section class="panel">
+        <div class="plabel"><span>uplinks</span><span>external</span></div>
+        <nav class="links" id="hudLinks"></nav>
+      </section>
+
+      <section class="panel">
+        <div class="plabel"><span>sys // readout</span><span>live</span></div>
+        <div class="sys">
+          <span>local time</span><span id="sysTime">--:--:--</span>
+          <span>grid</span><span>51.8985N 8.4756W</span>
+          <span>node</span><span>cork.ie</span>
+          <span>scanlines</span><span id="sysScan" class="red">on</span>
+          <span>cmds run</span><span id="sysCount">0</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <nav class="chips" id="chips" aria-label="Quick commands"></nav>
+
+  <footer class="statusbar">
+    <span class="seg mode" id="mode">ready</span>
+    <span class="seg cwd" id="cwdSeg">~</span>
+    <div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
+    <span class="seg clock" id="clock">--:--</span>
+  </footer>
+</div>
+
+<div id="print-cv"></div>
+
+<template id="banner-lg">███╗   ██╗ █████╗ ████████╗██╗  ██╗ █████╗ ███╗   ██╗    ██╗  ██╗   ██╗ ██████╗ ███╗   ██╗███████╗
+████╗  ██║██╔══██╗╚══██╔══╝██║  ██║██╔══██╗████╗  ██║    ██║  ╚██╗ ██╔╝██╔═══██╗████╗  ██║██╔════╝
+██╔██╗ ██║███████║   ██║   ███████║███████║██╔██╗ ██║    ██║   ╚████╔╝ ██║   ██║██╔██╗ ██║███████╗
+██║╚██╗██║██╔══██║   ██║   ██╔══██║██╔══██║██║╚██╗██║    ██║    ╚██╔╝  ██║   ██║██║╚██╗██║╚════██║
+██║ ╚████║██║  ██║   ██║   ██║  ██║██║  ██║██║ ╚████║    ███████╗██║   ╚██████╔╝██║ ╚████║███████║
+╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝</template>
+<template id="banner-sm"> _  _   _ _____ _  _   _   _  _   _ __   _____  _  _ ___
+| \| | /_\_   _| || | /_\ | \| | | |\ \ / / _ \| \| / __|
+| .` |/ _ \| | | __ |/ _ \| .` | | |_\ V / (_) | .` \__ \
+|_|\_/_/ \_\_| |_||_/_/ \_\_|\_| |____|_| \___/|_|\_|___/</template>
+<template id="logo-nl">███╗   ██╗██╗
+████╗  ██║██║
+██╔██╗ ██║██║
+██║╚██╗██║██║
+██║ ╚████║███████╗
+╚═╝  ╚═══╝╚══════╝</template>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CV DATA — single source of truth. Edit this, everything updates.
+   draft:true renders a red DRAFT tag.
+   ═══════════════════════════════════════════════════════════════ */
+const CV = {
+  name: "Nathan Lyons",
+  handle: "natkiio",
+  role: "Database Engineer // Software Developer",
+  location: "Cork, Ireland",
+  email: "nathan99bvb@gmail.com",
+  links: {
+    github:   { label: "github.com/Natkiio", url: "https://github.com/Natkiio" },
+    linkedin: { label: "linkedin.com/in/nathan-conor-lyons1999", url: "https://www.linkedin.com/in/nathan-conor-lyons1999/" },
+  },
+  summary: [
+    "Database engineer at Flowtech, based in Cork. I work with SQL databases and build internal tools that automate business workflows.",
+    "Outside work I build across Java, Python, TypeScript and Svelte/React — simulation engines, game remakes and web apps. Currently doing an MSc in Artificial Intelligence at MTU, on top of a Higher Diploma in Computing (Software Development) from NCI and a BA (Hons) in Digital Humanities & IT from UCC.",
+    "Before code, I led teams in retail tech, which is where I picked up problem-solving under pressure, clear communication and a lot of hands-on troubleshooting. I do my best work in creative, fast-moving teams.",
+  ],
+  experience: [
+    {
+      when: "present", org: "Flowtech", role: "Database Engineer",
+      points: [
+        "Work with SQL databases day to day — querying, maintaining and reporting on business data",
+        "Build internal tools that automate manual workflows across the business",
+      ],
+    },
+  ],
+  projects: [
+    {
+      id: "cybrdek", title: "Cybrdek", when: "2026", kind: "Personal · in development",
+      stack: ["Svelte 5", "SvelteKit", "TypeScript", "PWA"],
+      url: "https://github.com/Natkiio/cybrdek",
+      points: [
+        "Terminal-styled character sheet and rules reference for the Cyberpunk RED tabletop RPG",
+        "SvelteKit + Svelte 5 runes in TypeScript, built as an installable, offline-first PWA for desktop and mobile",
+        "Hand-written rules engine (dice rolls, skill checks with crits) behind a pluggable ruleset interface, so other game systems can slot in later",
+      ],
+    },
+    {
+      id: "union-city-3d", title: "Union City 3D", when: "2026", kind: "Personal · co-developed",
+      stack: ["Godot", "GDScript", "Blender", "Python"],
+      url: "https://github.com/Natkiio/union-city-3d-remake",
+      points: [
+        "2.5D remake of the Flash classic The Last Stand: Union City, built with Robert O'Brien",
+        "Gameplay systems in GDScript — inventory, weapons and equipment; characters, props and environments modelled in Blender",
+        "Issue-driven git workflow with feature branches, PRs and a public design roadmap",
+      ],
+    },
+    {
+      id: "faction-sim", title: "D&D Faction & World Simulator", when: "2025", kind: "NCI Final Project",
+      stack: ["Java 21", "JavaFX", "SQLite", "Maven"],
+      url: "https://github.com/Natkiio/DnDFactionSimulator",
+      points: [
+        "AI-driven simulation engine with weighted decision-making for autonomous faction behaviour",
+        "SQLite schema for persistent factions, relationships (alliances, rivalries, wars) and event logging",
+        "Real-time analytics dashboards that cut ~50% of post-session data review",
+        "JavaFX charts and relationship network graphs, plus DM controls to intervene in the simulation",
+      ],
+    },
+  ],
+  education: [
+    { when: "2026 — present", status: "in progress", title: "MSc in Artificial Intelligence",                                org: "Munster Technological University (MTU), Cork" },
+    { when: "2025 — Feb 2026", status: "complete",   title: "Higher Diploma in Science in Computing (Software Development)", org: "National College of Ireland, Dublin" },
+    { when: "2020 — 2024",     status: "complete",   title: "BA (Hons) Digital Humanities & Information Technology",         org: "University College Cork" },
+  ],
+  skills: {
+    "languages": ["SQL", "Java", "Python", "TypeScript", "JavaScript", "C++"],
+    "frontend":  ["Svelte", "React", "HTML & CSS", "JavaFX"],
+    "backend":   ["Node.js", "Django", "GraphQL", "REST APIs"],
+    "data":      ["SQL Server", "MySQL", "SQLite", "MongoDB"],
+    "tools":     ["Git", "Agile / Scrum", "Figma", "Blender", "Godot", "Unreal Engine 5"],
+  },
+  interests: [
+    { title: "Dungeons & Dragons", text: "Dungeon Master of a running campaign for 3+ years" },
+    { title: "Video games",        text: "Volunteer video game journalist, active in the indie dev scene" },
+    { title: "Art",                text: "Drawing for 15+ years, with a passion for art history" },
+  ],
+};
+
+/* ═══════════════════════════ engine ═══════════════════════════ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const root = document.documentElement;
+const out = $("#out"), input = $("#cmd"), term = $("#term");
+const reducedPref = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const finePointer = matchMedia("(pointer: fine)").matches;
+const started = Date.now();
+const store = { get:(k,d)=>{ try{ return localStorage.getItem(k) ?? d }catch{ return d } }, set:(k,v)=>{ try{ localStorage.setItem(k,v) }catch{} } };
+
+let motion = !reducedPref && store.get("nl-motion", "on") !== "off";
+root.dataset.motion = motion ? "on" : "off";
+root.dataset.scan = store.get("nl-scan", "on");
+
+let cwd = "~", flushing = false, busy = false, runCount = 0;
+let hist = []; try { hist = JSON.parse(store.get("nl-hist", "[]")) || []; } catch {}
+let hIdx = hist.length;
+let chain = Promise.resolve();
+
+/* html builders */
+const pad2 = n => String(n).padStart(2, "0");
+const c    = (cmd, label) => `<button class="c" data-cmd="${esc(cmd)}">${esc(label ?? cmd)}</button>`;
+const ext  = (url, label) => `<a class="c ext" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+const h    = (t, cls = "") => `<span class="hb ${cls}" data-scramble>${esc(t)}</span>`;
+const lbl  = (t, cls = "") => `<span class="lbl ${cls}">${t}</span>`;
+const kv   = (k, v) => `<span class="k">${esc(k)}</span>${v}`;
+const ul   = arr => `<ul>${arr.map(x => `<li>${x}</li>`).join("")}</ul>`;
+const chips = arr => arr.map(s => `<span class="chip">${esc(s)}</span>`).join("");
+const draft = d => d ? `<span class="draft">draft</span>` : "";
+const cells = list => list.map(([l, v, w]) => `<div class="cell${w ? " wide" : ""}"><span class="fl">${esc(l)}</span><span class="fv">${v}</span></div>`).join("");
+const fgrid = list => `<div class="fgrid">${cells(list)}</div>`;
+const rec = ({ label, right = "", sel = false, body }) =>
+  `<div class="rec${sel ? " sel" : ""}"><div class="rec-l"><span>${label}</span><span>${right}</span></div>${body}</div>`;
+const pad = (s, n) => esc(s) + " ".repeat(Math.max(1, n - s.length));
+
+function sleep(ms){ return (flushing || !motion) ? Promise.resolve() : new Promise(r => setTimeout(r, ms)); }
+function scrollEnd(){ term.scrollTop = term.scrollHeight; }
+
+async function emit(lines, delay = 16){
+  for (const l of [].concat(lines)){
+    const div = document.createElement("div");
+    div.className = "ln" + (motion && !flushing && !document.hidden ? " in" : "");
+    div.innerHTML = l === "" ? "&nbsp;" : l;
+    out.appendChild(div);
+    div.querySelectorAll("[data-scramble]").forEach(scramble);
+    scrollEnd();
+    await sleep(delay);
+  }
+}
+
+const GLYPHS = "!<>-_\\/[]{}=+*^?#$%&01ABCDEFXZ";
+function scramble(el){
+  if (!motion || flushing) return;
+  const final = el.textContent; let f = 0;
+  const iv = setInterval(() => {
+    let s = "";
+    for (let i = 0; i < final.length; i++) s += (i < f * 2 || final[i] === " ") ? final[i] : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+    el.textContent = s;
+    if (++f * 2 >= final.length){ clearInterval(iv); el.textContent = final; }
+  }, 24);
+}
+
+function ps1Html(){ return `<span class="u">nathan</span>@<span class="hst">nl-os</span>:<span class="cwd">${esc(cwd)}</span>$`; }
+function renderPs1(){ $("#ps1").innerHTML = ps1Html(); $("#cwdSeg").textContent = cwd; }
+function echoLine(text){
+  const div = document.createElement("div");
+  div.className = "ln echo";
+  div.innerHTML = `<span class="ps1">${ps1Html()}</span> <span class="typed">${esc(text)}</span>`;
+  out.appendChild(div); scrollEnd();
+}
+function setBusy(b){ busy = b; const m = $("#mode"); m.textContent = b ? "busy" : "ready"; m.classList.toggle("busy", b); }
+function markActive(key){ document.querySelectorAll(".qbtn").forEach(b => b.classList.toggle("on", b.dataset.cmd.split(" ")[0] === key)); }
+
+function exec(raw, opts){ chain = chain.then(() => run(raw, opts)).catch(console.error); return chain; }
+
+async function run(raw, { echo = true, record = true } = {}){
+  const line = raw.trim();
+  if (echo) echoLine(line);
+  if (!line) return;
+  if (record){ hist.push(line); hist = hist.slice(-50); store.set("nl-hist", JSON.stringify(hist)); }
+  hIdx = hist.length;
+  const [name, ...args] = line.split(/\s+/);
+  const key = ALIASES[name.toLowerCase()] || name.toLowerCase();
+  const cmd = COMMANDS[key];
+  setBusy(true);
+  try {
+    if (!cmd) await emit([`<span class="errtag">err</span> <span class="err">command not found:</span> ${esc(name)}`, `type ${c("help")} to see what this terminal can do`, ""]);
+    else {
+      if (cmd.group === "cv") markActive(key);
+      await cmd.run(args, line);
+      runCount++; $("#sysCount").textContent = runCount;
+    }
+  } finally { setBusy(false); flushing = false; }
+}
+
+/* ───────── virtual filesystem ───────── */
+const FS = {
+  "~":            ["about.txt", "experience/", "projects/", "education.log", "skills.cfg", "interests.txt", "contact.vcf"],
+  "~/projects":   CV.projects.map(p => p.id + ".md"),
+  "~/experience": CV.experience.map((e, i) => `${pad2(i + 1)}-${e.org.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.log`),
+};
+const FILE_CMD = { "about.txt":"whoami", "education.log":"education", "skills.cfg":"skills", "interests.txt":"interests", "contact.vcf":"contact" };
+function resolveDir(arg){
+  if (!arg || arg === "~" || arg === "/" || arg === "~/" || arg === "..") return "~";
+  const a = arg.replace(/\/$/, "").replace(/^~\//, "");
+  if (a === ".") return cwd;
+  if (FS["~/" + a]) return "~/" + a;
+  return null;
+}
+
+/* ───────── renderers ───────── */
+const R = {
+  whoami(){
+    return [
+      h(`ident // ${CV.name}`),
+      fgrid([
+        ["handle", `<span class="mint">@${esc(CV.handle)}</span>`],
+        ["role", esc(CV.role)],
+        ["location", esc(CV.location)],
+        ["status", `<span class="pulse"></span>online`],
+      ]),
+      rec({ label: "details in brief", right: "file // about.txt", body: CV.summary.map(p => `<p>${esc(p)}</p>`).join("") }),
+      `<span class="d">next →</span> ${c("experience")}  ${c("projects")}  ${c("skills")}  ${c("contact")}`, "",
+    ];
+  },
+  experience(){
+    const L = [h("work history")];
+    CV.experience.forEach((e, i) => L.push(rec({
+      label: `record ${pad2(i + 1)} // ${esc(e.org)}${draft(e.draft)}`, right: esc(e.when), sel: i === 0,
+      body: `<div class="rec-t">${esc(e.role)}</div><div class="rec-s">${esc(e.org)}</div>${ul(e.points.map(esc))}`,
+    })));
+    L.push("");
+    return L;
+  },
+  projectList(){
+    return [
+      h("projects"),
+      `<span class="d">select a file to open it</span>`,
+      `<div class="opts">${CV.projects.map((p, i) =>
+        `<button class="opt" data-cmd="projects ${i + 1}"><span class="rec-l"><span>file ${pad2(i + 1)} // ${esc(p.when)}</span><span>${esc(p.stack[0])}</span></span>` +
+        `<span class="opt-t">${esc(p.title)}</span><span class="opt-s">${esc(p.kind)}</span></button>`).join("")}</div>`,
+      `<span class="d">or</span> ${c("projects --all")} <span class="d">to open every file</span>`, "",
+    ];
+  },
+  project(p, i){
+    const list = [["stack", chips(p.stack), true]];
+    if (p.url) list.push(["source", ext(p.url, p.url.replace(/^https?:\/\//, "")), true]);
+    const nav = [];
+    if (i > 0) nav.push(c(`projects ${i}`, "← prev"));
+    nav.push(c("projects", "all projects"));
+    if (i < CV.projects.length - 1) nav.push(c(`projects ${i + 2}`, "next →"));
+    return [
+      lbl(`file ${pad2(i + 1)} // projects/${esc(p.id)}.md`, "red"),
+      rec({ label: `project // ${esc(p.kind)}`, right: esc(p.when), sel: true,
+        body: `<div class="rec-t">${esc(p.title)}</div>${fgrid(list)}${ul(p.points.map(esc))}` }),
+      nav.join("   "), "",
+    ];
+  },
+  skills(){
+    const groups = Object.entries(CV.skills);
+    return [h("loadout // skills"), fgrid(groups.map(([g, l], i) => [g, chips(l), i === groups.length - 1 && groups.length % 2 === 1])), ""];
+  },
+  education(){
+    return [h("education"), ...CV.education.map((e, i) => rec({
+      label: `qualification ${pad2(i + 1)}${e.status ? " // " + esc(e.status) : ""}`, right: esc(e.when), sel: e.status === "in progress",
+      body: `<div class="rec-t">${esc(e.title)}</div><div class="rec-s">${esc(e.org)}</div>`,
+    })), ""];
+  },
+  interests(){
+    return [h("offline processes"), fgrid(CV.interests.map(x => [x.title, esc(x.text)])), ""];
+  },
+  contact(){
+    return [h("open a channel"),
+      rec({ label: "contact.vcf", right: "secure line", sel: true, body: fgrid([
+        ["email", ext("mailto:" + CV.email, CV.email)],
+        ["github", ext(CV.links.github.url, CV.links.github.label)],
+        ["linkedin", ext(CV.links.linkedin.url, CV.links.linkedin.label), true],
+        ["location", esc(CV.location)],
+      ]) }),
+      `<span class="d">want it on paper?</span> ${c("print")} <span class="d">exports a clean PDF</span>`, ""];
+  },
+};
+
+/* ───────── commands ───────── */
+const COMMANDS = {
+  help: { desc: "list commands", group: "sys", async run(){
+    const row = (name, d) => `  ${c(name)}${" ".repeat(Math.max(1, 14 - name.length))}<span class="m">${esc(d)}</span>`;
+    const groups = { cv: "cv records", nav: "filesystem", sys: "system" };
+    const L = [h("command reference")];
+    for (const [g, title] of Object.entries(groups)){
+      L.push(lbl(title));
+      Object.entries(COMMANDS).filter(([, v]) => v.group === g && !v.hidden).forEach(([k, v]) => L.push(row(k, v.desc)));
+      L.push("");
+    }
+    L.push(`<span class="d">↑/↓ history · TAB autocomplete · ctrl+L clear · esc skip animation</span>`, "");
+    await emit(L, 8);
+  }},
+  whoami:     { desc: "who is Nathan", group: "cv", async run(){ await emit(R.whoami(), 40); } },
+  experience: { desc: "work history", group: "cv", async run(){ await emit(R.experience(), 60); } },
+  projects:   { desc: "things I've built  [n | --all]", group: "cv", async run(args){
+    const a = args[0];
+    if (a === "--all" || a === "-a"){ for (const [i, p] of CV.projects.entries()) await emit(R.project(p, i), 30); return; }
+    if (a){
+      const n = parseInt(a, 10);
+      const i = Number.isFinite(n) ? n - 1 : CV.projects.findIndex(p => p.id === a.replace(/\.md$/, ""));
+      if (CV.projects[i]) return emit(R.project(CV.projects[i], i), 50);
+      return emit([`<span class="errtag">err</span> <span class="err">no such project:</span> ${esc(a)}`, ""]);
+    }
+    await emit(R.projectList(), 50);
+  }},
+  skills:     { desc: "tech loadout", group: "cv", async run(){ await emit(R.skills(), 40); } },
+  education:  { desc: "degrees", group: "cv", async run(){ await emit(R.education(), 60); } },
+  interests:  { desc: "life outside the IDE", group: "cv", async run(){ await emit(R.interests(), 40); } },
+  contact:    { desc: "email & links", group: "cv", async run(){ await emit(R.contact(), 40); } },
+  cv:         { desc: "open the full record", group: "cv", async run(){
+    for (const k of ["whoami", "experience", "skills", "education", "interests"]) await emit(R[k](), 10);
+    for (const [i, p] of CV.projects.entries()) await emit(R.project(p, i), 10);
+    await emit(R.contact(), 10);
+  }},
+
+  ls:  { desc: "list files", group: "nav", async run(args){
+    const dir = args[0] ? resolveDir(args[0]) : cwd;
+    if (!dir) return emit([`<span class="errtag">err</span> <span class="err">ls: cannot access</span> ${esc(args[0])}`, ""]);
+    const items = FS[dir].map(f => f.endsWith("/") ? c(`cd ${f.slice(0, -1)}`, f) : c(`cat ${dir === cwd ? f : dir.replace(/^~\//, "") + "/" + f}`, f));
+    await emit([items.join("   "), ""]);
+  }},
+  cd:  { desc: "change directory", group: "nav", async run(args){
+    const dir = resolveDir(args[0]);
+    if (!dir) return emit([`<span class="errtag">err</span> <span class="err">cd: no such directory:</span> ${esc(args[0])}`, ""]);
+    cwd = dir; renderPs1();
+  }},
+  pwd: { desc: "print directory", group: "nav", async run(){ await emit([`/home/nathan${cwd.slice(1)}`, ""]); } },
+  cat: { desc: "read a file", group: "nav", async run(args){
+    const f = args[0];
+    if (!f) return emit([`usage: cat &lt;file&gt; — try ${c("ls")}`, ""]);
+    let path = f.replace(/^~\//, "");
+    if (cwd !== "~" && !path.includes("/")) path = cwd.slice(2) + "/" + path;
+    if (FILE_CMD[path]) return COMMANDS[FILE_CMD[path]].run([]);
+    const [dir, file] = path.split("/");
+    if (dir === "projects"){
+      const i = CV.projects.findIndex(p => p.id + ".md" === file);
+      if (i > -1) return emit(R.project(CV.projects[i], i), 50);
+    }
+    if (dir === "experience" && FS["~/experience"].includes(file)) return COMMANDS.experience.run([]);
+    if (FS["~/" + path.replace(/\/$/, "")]) return emit([`<span class="err">cat:</span> ${esc(f)}: is a directory — try ${c("cd " + path.replace(/\/$/, ""))}`, ""]);
+    await emit([`<span class="errtag">err</span> <span class="err">cat:</span> ${esc(f)}: no such file`, ""]);
+  }},
+  open: { desc: "open github | linkedin | email", group: "nav", async run(args){
+    const t = (args[0] || "").toLowerCase();
+    const map = { github: CV.links.github.url, linkedin: CV.links.linkedin.url, email: "mailto:" + CV.email, mail: "mailto:" + CV.email };
+    const p = CV.projects.find(p => p.id === t && p.url);
+    const url = map[t] || (p && p.url);
+    if (!url) return emit([`usage: open ${c("open github", "github")} | ${c("open linkedin", "linkedin")} | ${c("open email", "email")}`, ""]);
+    await emit([`<span class="d">establishing uplink →</span> ${ext(url, url.replace(/^mailto:|^https?:\/\//, ""))}`, ""]);
+    window.open(url, url.startsWith("mailto:") ? "_self" : "_blank", "noopener");
+  }},
+
+  neofetch: { desc: "system summary", group: "sys", async run(){
+    const logo = $("#logo-nl").innerHTML.split("\n");
+    const info = [
+      `<span class="red">nathan</span>@<span class="m">nl-os</span>`,
+      `<span class="f">──────────────</span>`,
+      kv("role", esc(CV.role)),
+      kv("base", esc(CV.location)),
+      kv("shell", "cvsh 2.1"),
+      kv("uptime", fmtDur(Date.now() - started)),
+      kv("langs", esc(CV.skills.languages.join(", "))),
+      kv("day job", "database engineer @ Flowtech"),
+      kv("palette", `<span class="red">red</span> / <span class="mint">mint</span> / white`),
+      ["red", "red-soft", "red-dim", "mint", "frame", "value"].map(v => `<span style="color:var(--${v})">███</span>`).join(""),
+    ];
+    const w = 22, L = [];
+    for (let i = 0; i < Math.max(logo.length, info.length); i++){
+      const lg = logo[i] || "";
+      L.push(`<span class="red" style="font-family:Menlo,ui-monospace,monospace;text-shadow:0 0 10px var(--red-glow)">${lg}</span>${" ".repeat(Math.max(2, w - [...lg].length))}${info[i] || ""}`);
+    }
+    L.push("");
+    await emit(L, 20);
+  }},
+  scanlines: { desc: "crt scanlines on | off", group: "sys", async run(args){
+    const v = (args[0] || "").toLowerCase();
+    if (v !== "on" && v !== "off") return emit([`scanlines are <span class="red">${root.dataset.scan}</span> — ${c("scanlines on", "on")} | ${c("scanlines off", "off")}`, ""]);
+    root.dataset.scan = v; store.set("nl-scan", v); $("#sysScan").textContent = v;
+    await emit([`<span class="ok">scanlines →</span> ${v}`, ""]);
+  }},
+  motion: { desc: "animations on | off", group: "sys", async run(args){
+    const v = (args[0] || "").toLowerCase();
+    if (v !== "on" && v !== "off") return emit([`motion is <span class="red">${motion ? "on" : "off"}</span> — ${c("motion on", "on")} | ${c("motion off", "off")}`, ""]);
+    motion = v === "on"; root.dataset.motion = v; store.set("nl-motion", v);
+    await emit([`<span class="ok">motion →</span> ${v}`, ""]);
+  }},
+  history: { desc: "previous commands", group: "sys", async run(){
+    await emit(hist.slice(-15).map((x, i) => `<span class="f">${String(i + 1).padStart(3)}</span>  ${c(x)}`).concat(""), 6);
+  }},
+  print: { desc: "export clean PDF", group: "sys", async run(){ await emit([`<span class="d">spooling printer daemon…</span>`, ""]); setTimeout(() => window.print(), 250); } },
+  clear: { desc: "clear the screen", group: "sys", async run(){ out.innerHTML = ""; } },
+  reboot:{ desc: "restart NL-OS", group: "sys", async run(){ out.innerHTML = ""; cwd = "~"; renderPs1(); await boot(true); } },
+
+  /* hidden extras */
+  hire:   { hidden: true, group: "sys", async run(){ await breach(); await emit(R.contact(), 40); } },
+  breach: { hidden: true, group: "sys", async run(){ await breach(); } },
+  sudo:   { hidden: true, group: "sys", async run(args){
+    if (args.join(" ").toLowerCase().includes("hire")) return COMMANDS.hire.run([]);
+    await emit([`<span class="errtag">denied</span> <span class="err">nathan is not in the sudoers file.</span> this incident will be reported.`, `<span class="d">…but</span> ${c("sudo hire nathan")} <span class="d">might work.</span>`, ""]);
+  }},
+  theme:  { hidden: true, group: "sys", async run(){ await emit([`<span class="red">theme locked:</span> red protocol. ${c("scanlines")} is the only dial.`, ""]); } },
+  rm:     { hidden: true, group: "sys", async run(){ await emit([`<span class="errtag">err</span> <span class="err">rm:</span> nice try, choom. filesystem is read-only.`, ""]); } },
+  exit:   { hidden: true, group: "sys", async run(){ await emit([`there is no exit. you're in the rebel county now.`, ""]); } },
+  echo:   { hidden: true, group: "sys", async run(args){ await emit([esc(args.join(" ")), ""]); } },
+  date:   { hidden: true, group: "sys", async run(){ await emit([new Date().toString(), ""]); } },
+  matrix: { hidden: true, group: "sys", async run(){ await emit([`wrong franchise. try ${c("breach")}.`, ""]); } },
+};
+const ALIASES = { "?":"help", man:"help", about:"whoami", bio:"whoami", work:"experience", exp:"experience", jobs:"experience",
+  proj:"projects", project:"projects", edu:"education", school:"education", hobbies:"interests", email:"contact", socials:"contact",
+  resume:"cv", cls:"clear", dir:"ls", fetch:"neofetch", pdf:"print", crt:"scanlines" };
+
+async function breach(){
+  await emit([h("ice breach // hire.exe")], 40);
+  const steps = ["bypassing recruiter firewall", "spoofing ATS keyword filter", "decrypting contact shard"];
+  for (const s of steps){
+    const div = document.createElement("div"); div.className = "ln"; out.appendChild(div);
+    for (let p = 0; p <= 20; p++){
+      div.innerHTML = `<span class="m">${pad(s, 30)}</span><span class="bar">[${"█".repeat(p)}<span class="e">${"░".repeat(20 - p)}</span>]</span> ${String(p * 5).padStart(3)}%`;
+      scrollEnd(); await sleep(18 + Math.random() * 40);
+    }
+  }
+  await emit([`<span class="hb alt glitch now" data-text="access granted">access granted</span>`], 60);
+}
+
+/* ───────── boot ───────── */
+async function boot(force){
+  const quick = !force && sessionStorage.getItem("nl-booted");
+  const ok = `<span class="ok">ok</span>`;
+  const lines = quick ? [] : [
+    `<span class="d">NL-OS BIOS v2.1.0 · (c) ${new Date().getFullYear()} natkiio systems</span>`,
+    `cortex check ......................... ${ok}`,
+    `mounting /home/nathan ................ ${ok}`,
+    `loading cv.daemon .................... ${ok}`,
+    `uplink → cork.ie ..................... ${ok}`,
+    "",
+  ];
+  if (lines.length) await emit(lines, 120);
+  sessionStorage.setItem("nl-booted", "1");
+  await emit([
+    `<pre class="banner lg" aria-label="${esc(CV.name)}">${$("#banner-lg").innerHTML}</pre>` +
+    `<pre class="banner sm" aria-hidden="true">${$("#banner-sm").innerHTML}</pre>` +
+    `<div class="banner-txt glitch" data-text="${esc(CV.name)}">${esc(CV.name)}</div>` +
+    `<span class="segbar"></span>`,
+    `<span class="tagline"><span class="red">${esc(CV.role)}</span>  <span class="f">/</span>  <span class="m">${esc(CV.location)}</span></span>`,
+    "",
+    `welcome to my CV. it's a terminal — type ${c("help")}, or click anything <span class="red">red</span>.`,
+    `<span class="d">in a hurry?</span> ${c("cv")} <span class="d">opens the full record ·</span> ${c("print")} <span class="d">gives you a PDF</span>`,
+    "",
+  ], 70);
+  if (!quick) await autoType("whoami");
+}
+async function autoType(text){
+  if (!motion) return run(text);
+  input.value = "";
+  for (const ch of text){ if (flushing) break; input.value += ch; await new Promise(r => setTimeout(r, 85)); }
+  await new Promise(r => setTimeout(r, 220));
+  input.value = "";
+  await run(text);
+}
+
+/* ───────── input ───────── */
+function completions(val){
+  const parts = val.split(/\s+/);
+  if (parts.length <= 1) return Object.keys(COMMANDS).filter(k => !COMMANDS[k].hidden && k.startsWith(parts[0]));
+  const [cmd, arg = ""] = parts;
+  let pool = [];
+  if (cmd === "cat"){
+    const here = FS[cwd].filter(f => !f.endsWith("/"));
+    pool = cwd === "~" ? [...here, ...FS["~/projects"].map(f => "projects/" + f)] : here;
+  }
+  if (cmd === "cd" || cmd === "ls") pool = cwd === "~" ? ["projects", "experience"] : ["~", ".."];
+  if (cmd === "open") pool = ["github", "linkedin", "email", ...CV.projects.filter(p => p.url).map(p => p.id)];
+  if (cmd === "motion" || cmd === "scanlines") pool = ["on", "off"];
+  if (cmd === "projects") pool = ["--all", ...CV.projects.map(p => p.id)];
+  return pool.filter(o => o.startsWith(arg)).map(o => `${cmd} ${o}`);
+}
+
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter"){
+    e.preventDefault();
+    if (busy){ flushing = true; return; }
+    const v = input.value; input.value = ""; exec(v);
+  } else if (e.key === "ArrowUp"){
+    e.preventDefault(); if (hIdx > 0){ hIdx--; input.value = hist[hIdx]; }
+  } else if (e.key === "ArrowDown"){
+    e.preventDefault(); if (hIdx < hist.length - 1){ hIdx++; input.value = hist[hIdx]; } else { hIdx = hist.length; input.value = ""; }
+  } else if (e.key === "Tab"){
+    e.preventDefault();
+    const opts = completions(input.value);
+    if (opts.length === 1) input.value = opts[0] + (opts[0].includes(" ") ? "" : " ");
+    else if (opts.length > 1){
+      const common = opts.reduce((a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return a.slice(0, i); });
+      if (common.length > input.value.length) input.value = common;
+      else { echoLine(input.value); emit([opts.map(o => c(o, o.split(" ").pop())).join("   "), ""], 0); }
+    }
+  } else if (e.key === "l" && e.ctrlKey){
+    e.preventDefault(); out.innerHTML = "";
+  } else if (e.key === "c" && e.ctrlKey && !window.getSelection().toString()){
+    e.preventDefault(); echoLine(input.value + "^C"); input.value = ""; flushing = true;
+  } else if (e.key === "Escape"){
+    flushing = true;
+  }
+});
+document.addEventListener("keydown", e => { if (busy && e.key === "Escape") flushing = true; });
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-cmd]");
+  if (b){ e.preventDefault(); if (busy) flushing = true; exec(b.dataset.cmd); if (finePointer) input.focus({ preventScroll: true }); return; }
+  if (e.target.closest("a")) return;
+  if (e.target.closest("#term") && finePointer && !window.getSelection().toString()) input.focus({ preventScroll: true });
+});
+term.addEventListener("pointerdown", () => { if (busy) flushing = true; }, { passive: true });
+
+/* ───────── HUD, chips, print sheet ───────── */
+function buildChrome(){
+  const n = $("#hudName"); n.textContent = CV.name; n.dataset.text = CV.name;
+  $("#hudRole").textContent = CV.role;
+  $("#hudGrid").innerHTML = cells([
+    ["handle", `@${esc(CV.handle)}`],
+    ["base", "Cork, IE"],
+    ["class", "Netrunner"],
+    ["status", `<span class="pulse"></span>online`],
+  ]);
+  const quick = [["whoami", "01"], ["experience", "02"], ["projects", "03"], ["skills", "04"], ["education", "05"], ["contact", "06"]];
+  const btn = ([cmd, num]) => `<button class="qbtn" data-cmd="${cmd}"><i>${num}</i>${cmd}</button>`;
+  $("#qcmds").innerHTML = quick.map(btn).join("") +
+    `<button class="qbtn wide" data-cmd="cv"><span>full record</span><i>cv --all</i></button>` +
+    `<button class="qbtn wide" data-cmd="print"><span>export → pdf</span><i>recruiter mode</i></button>`;
+  $("#chips").innerHTML = [...quick, ["cv", "∗"], ["print", "⎙"], ["help", "?"]].map(btn).join("");
+  $("#hudLinks").innerHTML =
+    `<a href="${esc(CV.links.github.url)}" target="_blank" rel="noopener"><span>github</span><span>@Natkiio ↗</span></a>` +
+    `<a href="${esc(CV.links.linkedin.url)}" target="_blank" rel="noopener"><span>linkedin</span><span>nathan-conor-lyons ↗</span></a>` +
+    `<a href="mailto:${esc(CV.email)}"><span>email</span><span>${esc(CV.email)}</span></a>`;
+  $("#sysScan").textContent = root.dataset.scan;
+  const tick = [
+    `<b>nl-os</b> // node cork.ie online`,
+    `stack: ${CV.skills.languages.join(" · ")}`,
+    `now building: <b>Cybrdek</b> (Svelte) + <b>Union City 3D</b> (Godot)`,
+    `studying: <b>MSc in AI</b> @ MTU`,
+    `type <b>help</b> for commands`,
+    `try <b>sudo hire nathan</b>`,
+    `DM of a 3+ year D&amp;D campaign`,
+  ].map(s => `<span>${s}</span>`).join("");
+  $("#ticker").innerHTML = tick + tick;
+
+  const P = [];
+  P.push(`<h1>${esc(CV.name)}</h1><div class="sub">${esc(CV.role.replace("//", "—"))} · ${esc(CV.location)}<br>${esc(CV.email)} · ${esc(CV.links.github.label)} · ${esc(CV.links.linkedin.label)}</div>`);
+  P.push(`<section><h2>Profile</h2>${CV.summary.map(s => `<p style="margin:0 0 5pt">${esc(s)}</p>`).join("")}</section>`);
+  P.push(`<section><h2>Experience</h2>${CV.experience.map(e => `<div class="entry"><div class="row"><span>${esc(e.role)} — ${esc(e.org)}</span><span>${esc(e.when)}</span></div><ul>${e.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>`).join("")}</section>`);
+  P.push(`<section><h2>Projects</h2>${CV.projects.map(p => `<div class="entry"><div class="row"><span>${esc(p.title)} <span class="meta">· ${esc(p.kind)} · ${esc(p.stack.join(", "))}</span></span><span>${esc(p.when)}</span></div><ul>${p.points.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}</section>`);
+  P.push(`<section><h2>Education</h2>${CV.education.map(e => `<div class="entry"><div class="row"><span>${esc(e.title)}</span><span>${esc(e.when)}</span></div><div class="meta">${esc(e.org)}</div></div>`).join("")}</section>`);
+  P.push(`<section><h2>Skills</h2>${Object.entries(CV.skills).map(([g, l]) => `<div><b style="display:inline-block;min-width:11ch;text-transform:capitalize">${esc(g)}</b>${esc(l.join(", "))}</div>`).join("")}</section>`);
+  P.push(`<section><h2>Interests</h2>${CV.interests.map(i => `<div><b>${esc(i.title)}</b> — ${esc(i.text)}</div>`).join("")}</section>`);
+  $("#print-cv").innerHTML = P.join("");
+}
+
+/* ───────── clocks ───────── */
+function fmtDur(ms){ const s = Math.floor(ms / 1000); return [s / 3600, (s % 3600) / 60, s % 60].map(x => String(Math.floor(x)).padStart(2, "0")).join(":"); }
+const tfmt = new Intl.DateTimeFormat("en-IE", { timeZone: "Europe/Dublin", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+function tickClock(){
+  const t = tfmt.format(new Date());
+  $("#sysTime").textContent = t; $("#clock").textContent = t + " IE";
+  $("#uptime").textContent = "session " + fmtDur(Date.now() - started);
+}
+
+/* ───────── go ───────── */
+buildChrome();
+renderPs1();
+tickClock(); setInterval(tickClock, 1000);
+setBusy(true);
+chain = chain.then(() => boot()).finally(() => { setBusy(false); flushing = false; if (finePointer) input.focus({ preventScroll: true }); });
+/* deep links: index.html#projects%201  or  #skills;contact */
+decodeURIComponent(location.hash.slice(1)).split(";").map(s => s.trim()).filter(Boolean).forEach(cmd => exec(cmd));
+</script>
+</body>
+</html>
