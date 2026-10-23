@@ -235,7 +235,28 @@ a.c.ext:hover, a.c.ext:focus-visible{ background:var(--mint); color:var(--bg-0);
 .segbar{ display:block; height:4px; max-width:min(100%, 98ch); background:var(--segbar); opacity:.85; margin:10px 0 14px }
 .tagline{ font:600 1.15em/1.3 var(--f-text); letter-spacing:.12em; text-transform:uppercase }
 
-.bar{ color:var(--red); text-shadow:0 0 6px var(--red-glow) } .bar .e{ color:var(--frame-dim); text-shadow:none }
+.bar{ color:var(--red); text-shadow:0 0 6px var(--red-glow) }
+
+/* sql result tables */
+.sqlwrap{ white-space:normal; overflow-x:auto; max-width:100%; margin:.35em 0 .3em; scrollbar-width:thin; scrollbar-color:var(--frame-dim) transparent }
+.sqlt{ border-collapse:collapse; border:1px solid var(--frame); background:rgba(5,6,7,.6); font:500 1.02em/1.35 var(--f-text) }
+.sqlt th{ font:400 .52rem/1.3 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--label); text-align:left; padding:.7em .85em .6em; border:1px solid var(--frame); white-space:nowrap }
+.sqlt td{ padding:.35em .85em; border:1px solid var(--frame-dim); color:var(--value); vertical-align:top; max-width:60ch }
+.sqlt td{ min-width:14ch }
+.sqlt td.num{ color:var(--mint); text-align:right; font-family:var(--f-mono); white-space:nowrap; min-width:0 }
+.sqlt tr:hover td{ background:rgba(255,31,75,.07) }
+.ln.in .sqlwrap{ animation:wipe .32s steps(7) both }
+.schema{ color:var(--mint); opacity:.9 }
+.ps1 .db{ color:var(--mint) } .ps1 .sq{ color:var(--red); text-shadow:0 0 8px var(--red-glow) }
+
+/* git log */
+.glog{ display:grid; grid-template-columns:auto auto auto minmax(0,1fr); column-gap:2ch; white-space:normal; max-width:110ch }
+.glog > span{ white-space:nowrap } .glog > span.msg{ white-space:normal; color:var(--value) }
+@container term (max-width: 620px){
+  .glog{ grid-template-columns:auto auto minmax(0,1fr) }
+  .glog > span.msg{ grid-column:1 / -1; margin-bottom:.55em; color:var(--label) }
+  .glog > span:nth-child(4n+3){ overflow:hidden; text-overflow:ellipsis }
+} .bar .e{ color:var(--frame-dim); text-shadow:none }
 
 /* glitch */
 .glitch{ position:relative }
@@ -304,7 +325,7 @@ span.glitch, div.glitch{ display:inline-block }
 .sys{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font:13px/1.5 var(--f-mono) }
 .sys span:nth-child(odd){ font:400 8.5px/2.2 var(--f-label); letter-spacing:.14em; text-transform:uppercase; color:var(--muted) }
 .sys span:nth-child(even){ text-align:right; font-variant-numeric:tabular-nums; color:var(--value) }
-.sys .red{ color:var(--red) !important }
+.sys .red{ color:var(--red) !important } .sys .mint{ color:var(--mint) !important }
 
 /* ── status bar ("PROTOCOL 6520-A44") ─────────────────── */
 .statusbar{
@@ -419,6 +440,7 @@ html[data-scan="off"] body::before, html[data-scan="off"] .scanbar{ display:none
           <span>grid</span><span>51.8985N 8.4756W</span>
           <span>node</span><span>cork.ie</span>
           <span>scanlines</span><span id="sysScan" class="red">on</span>
+          <span>last push</span><span id="sysPush" class="mint">…</span>
           <span>cmds run</span><span id="sysCount">0</span>
         </div>
       </section>
@@ -549,7 +571,7 @@ let motion = !reducedPref && store.get("nl-motion", "on") !== "off";
 root.dataset.motion = motion ? "on" : "off";
 root.dataset.scan = store.get("nl-scan", "on");
 
-let cwd = "~", flushing = false, busy = false, runCount = 0;
+let cwd = "~", flushing = false, busy = false, runCount = 0, sqlMode = false;
 let hist = []; try { hist = JSON.parse(store.get("nl-hist", "[]")) || []; } catch {}
 let hIdx = hist.length;
 let chain = Promise.resolve();
@@ -597,15 +619,18 @@ function scramble(el){
   }, 24);
 }
 
-function ps1Html(){ return `<span class="u">nathan</span>@<span class="hst">nl-os</span>:<span class="cwd">${esc(cwd)}</span>$`; }
-function renderPs1(){ $("#ps1").innerHTML = ps1Html(); $("#cwdSeg").textContent = cwd; }
+function ps1Html(){
+  if (sqlMode) return `<span class="db">cv.db</span> <span class="sq">sql&gt;</span>`;
+  return `<span class="u">nathan</span>@<span class="hst">nl-os</span>:<span class="cwd">${esc(cwd)}</span>$`;
+}
+function renderPs1(){ $("#ps1").innerHTML = ps1Html(); $("#cwdSeg").textContent = sqlMode ? "cv.db" : cwd; input.placeholder = sqlMode ? "SELECT * FROM projects;" : "type help"; setBusy(busy); }
 function echoLine(text){
   const div = document.createElement("div");
   div.className = "ln echo";
   div.innerHTML = `<span class="ps1">${ps1Html()}</span> <span class="typed">${esc(text)}</span>`;
   out.appendChild(div); scrollEnd();
 }
-function setBusy(b){ busy = b; const m = $("#mode"); m.textContent = b ? "busy" : "ready"; m.classList.toggle("busy", b); }
+function setBusy(b){ busy = b; const m = $("#mode"); m.textContent = b ? "busy" : (sqlMode ? "sql" : "ready"); m.classList.toggle("busy", b); }
 function markActive(key){ document.querySelectorAll(".qbtn").forEach(b => b.classList.toggle("on", b.dataset.cmd.split(" ")[0] === key)); }
 
 function exec(raw, opts){ chain = chain.then(() => run(raw, opts)).catch(console.error); return chain; }
@@ -621,9 +646,12 @@ async function run(raw, { echo = true, record = true } = {}){
   const cmd = COMMANDS[key];
   setBusy(true);
   try {
-    if (!cmd) await emit([`<span class="errtag">err</span> <span class="err">command not found:</span> ${esc(name)}`, `type ${c("help")} to see what this terminal can do`, ""]);
+    if (sqlMode && key === "exit") await leaveSql();
+    else if (sqlMode && !cmd) await sqlInput(line);
+    else if (!cmd) await emit([`<span class="errtag">err</span> <span class="err">command not found:</span> ${esc(name)}`, `type ${c("help")} to see what this terminal can do`, ""]);
     else {
       if (cmd.group === "cv") markActive(key);
+      if (sqlMode && key !== "sql" && !SQL_KEEP.has(key)) await leaveSql();
       await cmd.run(args, line);
       runCount++; $("#sysCount").textContent = runCount;
     }
@@ -682,6 +710,8 @@ const R = {
   project(p, i){
     const list = [["stack", chips(p.stack), true]];
     if (p.url) list.push(["source", ext(p.url, p.url.replace(/^https?:\/\//, "")), true]);
+    const lc = (GH.commits || []).find(x => p.url && p.url.endsWith("/" + x.repo));
+    if (lc) list.push(["last commit", `<span class="mint">${esc(ago(lc.date))}</span> · ${esc(lc.msg)}`, true]);
     const nav = [];
     if (i > 0) nav.push(c(`projects ${i}`, "← prev"));
     nav.push(c("projects", "all projects"));
@@ -722,7 +752,7 @@ const R = {
 const COMMANDS = {
   help: { desc: "list commands", group: "sys", async run(){
     const row = (name, d) => `  ${c(name)}${" ".repeat(Math.max(1, 14 - name.length))}<span class="m">${esc(d)}</span>`;
-    const groups = { cv: "cv records", nav: "filesystem", sys: "system" };
+    const groups = { cv: "cv records", data: "data // live", nav: "filesystem", sys: "system" };
     const L = [h("command reference")];
     for (const [g, title] of Object.entries(groups)){
       L.push(lbl(title));
@@ -792,6 +822,42 @@ const COMMANDS = {
     window.open(url, url.startsWith("mailto:") ? "_self" : "_blank", "noopener");
   }},
 
+  sql: { desc: "query my CV with SQL  [query]", group: "data", async run(args, line){
+    const q = line.replace(/^\S+\s*/, "").trim();
+    try { await getDb(); }
+    catch (e){ return emit([`<span class="errtag">err</span> <span class="err">couldn't load the SQL engine:</span> ${esc(e.message)}`, ""]); }
+    if (q) return runSql(q);
+    if (!sqlMode){
+      sqlMode = true; renderPs1();
+      await emit([
+        h("cv.db // sqlite"),
+        `<span class="m">my CV, loaded as a real SQLite database (compiled to WebAssembly, running in your browser).</span>`,
+        `<span class="d">write any query. changes reset when you reload.</span>`, "",
+        lbl("tables"), sqlTablesLine(), "",
+        lbl("try one"), ...SQL_EXAMPLES.map(x => `  ${c("sql " + x, x)}`), "",
+        `<span class="d">dot commands:</span> ${c(".tables")}  ${c(".schema")}  ${c(".examples")}  ${c(".exit")}`, "",
+      ], 30);
+    }
+  }},
+  git: { desc: "live commits from my GitHub  [log | log <repo>]", group: "data", async run(args){
+    const sub = (args[0] || "").toLowerCase();
+    if (sub === "status") return emit([`On branch main`, `Your CV is up to date with 'origin/main'.`, ``, `<span class="ok">nothing to commit, working tree clean</span>`, ""]);
+    if (sub !== "log") return emit([`usage: ${c("git log")} | git log &lt;repo&gt; — e.g. ${GH_REPOS().map(r => c("git log " + r, r)).join("  ")}`, ""]);
+    const filt = (args[1] || "").toLowerCase();
+    const wait = document.createElement("div"); wait.className = "ln d"; wait.textContent = "fetching origin…"; out.appendChild(wait); scrollEnd();
+    let list;
+    try { list = await ghCommits(); }
+    catch (e){ wait.remove(); return emit([`<span class="errtag">err</span> <span class="err">uplink to GitHub failed:</span> ${esc(e.message)}`, `see it directly → ${ext(CV.links.github.url, CV.links.github.label)}`, ""]); }
+    wait.remove();
+    if (filt) list = list.filter(x => x.repo.toLowerCase().startsWith(filt));
+    if (!list.length) return emit([`<span class="err">no commits found</span>${filt ? " for " + esc(filt) : ""}`, ""]);
+    const rows = list.slice(0, filt ? 15 : 10).map(x =>
+      `<span>${ext(x.url, x.sha.slice(0, 7))}</span><span class="d">${esc(ago(x.date))}</span><span class="mint">${esc(x.repo)}</span><span class="msg">${esc(x.msg)}</span>`).join("");
+    await emit([h(filt ? `git log // ${filt}` : "git log // live"), `<div class="glog">${rows}</div>`, "",
+      `<span class="d">pulled live from</span> ${ext(CV.links.github.url, CV.links.github.label)} <span class="d">· filter:</span> ${GH_REPOS().map(r => c("git log " + r, r)).join("  ")}`, ""], 30);
+  }},
+  commits: { hidden: true, group: "data", async run(){ return COMMANDS.git.run(["log"]); } },
+
   neofetch: { desc: "system summary", group: "sys", async run(){
     const logo = $("#logo-nl").innerHTML.split("\n");
     const info = [
@@ -849,7 +915,157 @@ const COMMANDS = {
 };
 const ALIASES = { "?":"help", man:"help", about:"whoami", bio:"whoami", work:"experience", exp:"experience", jobs:"experience",
   proj:"projects", project:"projects", edu:"education", school:"education", hobbies:"interests", email:"contact", socials:"contact",
-  resume:"cv", cls:"clear", dir:"ls", fetch:"neofetch", pdf:"print", crt:"scanlines" };
+  resume:"cv", cls:"clear", dir:"ls", fetch:"neofetch", pdf:"print", crt:"scanlines", query:"sql", db:"sql", sqlite:"sql", log:"commits" };
+const SQL_KEEP = new Set(["clear", "history", "help", "scanlines", "motion"]);
+
+/* ───────── SQL mode: the CV as a SQLite database (sql.js / WebAssembly) ───────── */
+const SQLJS = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/";
+const SQL_TABLES = ["profile", "experience", "experience_points", "projects", "project_stack", "project_points", "education", "skills", "interests", "project_overview"];
+const SQL_EXAMPLES = [
+  "SELECT * FROM project_overview;",
+  "SELECT skill FROM skills WHERE skill LIKE '%SQL%';",
+  "SELECT p.title, s.tech FROM projects p JOIN project_stack s ON s.project_id = p.id WHERE s.tech LIKE 'Java%';",
+  "SELECT category, COUNT(*) AS skills FROM skills GROUP BY category ORDER BY skills DESC;",
+  "SELECT title, institution, status FROM education ORDER BY id;",
+  "SELECT role, org FROM experience WHERE is_current = 1;",
+];
+const SQL_KW = ["SELECT", "FROM", "WHERE", "JOIN", "LEFT", "ON", "GROUP", "BY", "ORDER", "LIMIT", "COUNT", "DISTINCT", "LIKE", "AND", "OR", "AS", "DESC", "ASC", "HAVING", "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "group_concat"];
+let db = null, dbLoading = null;
+
+function loadScript(src){
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("network error — are you offline?")); document.head.appendChild(s); });
+}
+async function getDb(){
+  if (db) return db;
+  if (!dbLoading) dbLoading = (async () => {
+    const wait = document.createElement("div"); wait.className = "ln d"; wait.textContent = "mounting cv.db …"; out.appendChild(wait); scrollEnd();
+    try {
+      if (!window.initSqlJs) await loadScript(SQLJS + "sql-wasm.js");
+      const SQL = await initSqlJs({ locateFile: f => SQLJS + f });
+      const d = new SQL.Database();
+      d.run(`
+        CREATE TABLE profile (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE experience (id INTEGER PRIMARY KEY, org TEXT NOT NULL, role TEXT NOT NULL, period TEXT, is_current INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE experience_points (experience_id INTEGER NOT NULL REFERENCES experience(id), point TEXT NOT NULL);
+        CREATE TABLE projects (id INTEGER PRIMARY KEY, slug TEXT UNIQUE NOT NULL, title TEXT NOT NULL, year INTEGER, kind TEXT, url TEXT);
+        CREATE TABLE project_stack (project_id INTEGER NOT NULL REFERENCES projects(id), tech TEXT NOT NULL);
+        CREATE TABLE project_points (project_id INTEGER NOT NULL REFERENCES projects(id), point TEXT NOT NULL);
+        CREATE TABLE education (id INTEGER PRIMARY KEY, title TEXT NOT NULL, institution TEXT, period TEXT, status TEXT);
+        CREATE TABLE skills (category TEXT NOT NULL, skill TEXT NOT NULL);
+        CREATE TABLE interests (title TEXT NOT NULL, detail TEXT);
+        CREATE VIEW project_overview AS
+          SELECT p.title, p.year, p.kind, group_concat(s.tech, ', ') AS stack
+          FROM projects p LEFT JOIN project_stack s ON s.project_id = p.id
+          GROUP BY p.id ORDER BY p.year DESC, p.id;
+      `);
+      const ins = (sql, rows) => { const st = d.prepare(sql); rows.forEach(r => st.run(r)); st.free(); };
+      ins("INSERT INTO profile VALUES (?, ?)", [["name", CV.name], ["handle", "@" + CV.handle], ["role", CV.role], ["location", CV.location], ["email", CV.email], ["github", CV.links.github.url], ["linkedin", CV.links.linkedin.url]]);
+      CV.experience.forEach((e, i) => {
+        ins("INSERT INTO experience VALUES (?, ?, ?, ?, ?)", [[i + 1, e.org, e.role, e.when, /present/i.test(e.when) ? 1 : 0]]);
+        ins("INSERT INTO experience_points VALUES (?, ?)", e.points.map(x => [i + 1, x]));
+      });
+      CV.projects.forEach((p, i) => {
+        ins("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)", [[i + 1, p.id, p.title, parseInt(p.when, 10) || null, p.kind, p.url || null]]);
+        ins("INSERT INTO project_stack VALUES (?, ?)", p.stack.map(t => [i + 1, t]));
+        ins("INSERT INTO project_points VALUES (?, ?)", p.points.map(x => [i + 1, x]));
+      });
+      ins("INSERT INTO education VALUES (?, ?, ?, ?, ?)", CV.education.map((e, i) => [i + 1, e.title, e.org, e.when, e.status || null]));
+      ins("INSERT INTO skills VALUES (?, ?)", Object.entries(CV.skills).flatMap(([g, l]) => l.map(x => [g, x])));
+      ins("INSERT INTO interests VALUES (?, ?)", CV.interests.map(x => [x.title, x.text]));
+      db = d;
+      return d;
+    } finally { wait.remove(); dbLoading = db ? dbLoading : null; }
+  })();
+  return dbLoading;
+}
+function sqlTablesLine(){ return SQL_TABLES.map(t => c(`sql SELECT * FROM ${t};`, t)).join("  "); }
+function sqlTable({ columns, values }){
+  const MAX = 200, rows = values.slice(0, MAX);
+  const cell = v => v === null ? `<td><span class="f">NULL</span></td>` : `<td${typeof v === "number" ? ' class="num"' : ""}>${esc(v)}</td>`;
+  return `<div class="sqlwrap"><table class="sqlt"><thead><tr>${columns.map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows.map(r => `<tr>${r.map(cell).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+async function runSql(q){
+  const t0 = performance.now();
+  let res;
+  try { res = db.exec(q); }
+  catch (e){ return emit([`<span class="errtag">sql error</span> <span class="err">${esc(e.message)}</span>`, ""]); }
+  const ms = (performance.now() - t0).toFixed(1);
+  if (!res.length){
+    const n = db.getRowsModified();
+    return emit([`<span class="ok">ok</span> <span class="d">· ${n} row${n === 1 ? "" : "s"} changed · ${ms} ms</span>`, ""]);
+  }
+  const L = [];
+  res.forEach(r => {
+    L.push(sqlTable(r));
+    L.push(`<span class="d">${r.values.length} row${r.values.length === 1 ? "" : "s"}${r.values.length > 200 ? " (showing 200)" : ""} · ${ms} ms</span>`);
+  });
+  L.push("");
+  await emit(L, 30);
+}
+async function leaveSql(){ sqlMode = false; renderPs1(); await emit([`<span class="d">left sql mode · cv.db unmounted</span>`, ""]); }
+async function sqlInput(line){
+  const cmd = line.toLowerCase().replace(/;$/, "");
+  if ([".exit", ".quit", "exit", "quit", "\\q", "q"].includes(cmd)) return leaveSql();
+  if (cmd === ".tables") return emit([sqlTablesLine(), ""]);
+  if (cmd === ".examples" || cmd === ".help") return emit([lbl("try one"), ...SQL_EXAMPLES.map(x => `  ${c("sql " + x, x)}`), "", `<span class="d">dot commands:</span> ${c(".tables")}  ${c(".schema")}  ${c(".examples")}  ${c(".exit")}`, ""]);
+  if (cmd.startsWith(".schema")){
+    const t = line.split(/\s+/)[1];
+    const r = db.exec(t ? "SELECT sql FROM sqlite_master WHERE name = ?" : "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type DESC, rowid", t ? [t.replace(/;$/, "")] : undefined);
+    if (!r.length) return emit([`<span class="err">no such table:</span> ${esc(t)}`, ""]);
+    return emit(r[0].values.map(v => `<span class="schema">${esc(v[0])};</span>`).concat(""), 12);
+  }
+  if (cmd.startsWith(".")) return emit([`<span class="err">unknown dot command.</span> try ${c(".examples")}`, ""]);
+  return runSql(line);
+}
+
+/* ───────── live GitHub feed ───────── */
+const GH_USER = "Natkiio";
+const GH_REPOS = () => CV.projects.filter(p => p.url && p.url.includes(`github.com/${GH_USER}/`)).map(p => p.url.split("/").pop());
+const GH = { commits: null, at: 0 };
+let ghPending = null;
+function ago(iso){
+  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+  if (s < 90) return "just now";
+  const u = [[60, "m"], [24, "h"], [30, "d"], [12, "mo"], [Infinity, "y"]];
+  let v = s / 60;
+  for (const [k, l] of u){ if (v < k) return Math.floor(v) + l + " ago"; v /= k; }
+}
+async function ghCommits(){
+  if (!GH.commits){ try { const c0 = JSON.parse(sessionStorage.getItem("nl-gh") || "null"); if (c0 && Date.now() - c0.at < 10 * 60e3) Object.assign(GH, c0); } catch {} }
+  if (GH.commits) return GH.commits;
+  if (!ghPending) ghPending = (async () => {
+    const lists = await Promise.all(GH_REPOS().map(async repo => {
+      const r = await fetch(`https://api.github.com/repos/${GH_USER}/${repo}/commits?per_page=10`, { headers: { Accept: "application/vnd.github+json" } });
+      if (!r.ok) throw new Error(r.status === 403 || r.status === 429 ? "GitHub rate limit hit — try again in a bit" : `GitHub returned ${r.status}`);
+      return (await r.json()).map(x => ({ repo, sha: x.sha, msg: x.commit.message.split("\n")[0], date: x.commit.committer.date, url: x.html_url }));
+    }));
+    GH.commits = lists.flat().sort((a, b) => b.date.localeCompare(a.date));
+    GH.at = Date.now();
+    try { sessionStorage.setItem("nl-gh", JSON.stringify(GH)); } catch {}
+    return GH.commits;
+  })().finally(() => { ghPending = null; });
+  return ghPending;
+}
+function buildTicker(live){
+  const tick = [
+    `<b>nl-os</b> // node cork.ie online`,
+    live || `now building: <b>Cybrdek</b> (Svelte) + <b>Union City 3D</b> (Godot)`,
+    `studying: <b>MSc in AI</b> @ MTU`,
+    `type <b>sql</b> to query this CV`,
+    `stack: ${CV.skills.languages.join(" · ")}`,
+    `try <b>sudo hire nathan</b>`,
+    `DM of a 3+ year D&amp;D campaign`,
+  ].map(s => `<span>${s}</span>`).join("");
+  $("#ticker").innerHTML = tick + tick;
+}
+function showLatestPush(){
+  ghCommits().then(list => {
+    const x = list[0]; if (!x) return;
+    $("#sysPush").textContent = `${x.repo} · ${ago(x.date)}`;
+    buildTicker(`last commit → <b>${esc(x.repo)}</b>: ${esc(x.msg)} (${esc(ago(x.date))})`);
+  }).catch(() => { $("#sysPush").textContent = "offline"; });
+}
 
 async function breach(){
   await emit([h("ice breach // hire.exe")], 40);
@@ -887,6 +1103,7 @@ async function boot(force){
     "",
     `welcome to my CV. it's a terminal — type ${c("help")}, or click anything <span class="red">red</span>.`,
     `<span class="d">in a hurry?</span> ${c("cv")} <span class="d">opens the full record ·</span> ${c("print")} <span class="d">gives you a PDF</span>`,
+    `<span class="d">database engineer, so naturally this CV is a database →</span> ${c("sql")} <span class="d">· live commits →</span> ${c("git log")}`,
     "",
   ], 70);
   if (!quick) await autoType("whoami");
@@ -902,6 +1119,12 @@ async function autoType(text){
 
 /* ───────── input ───────── */
 function completions(val){
+  if (sqlMode){
+    const m = val.match(/^(.*?)([\w.]*)$/s), head = m[1], word = m[2];
+    if (!word) return [];
+    const pool = [...SQL_TABLES, ...SQL_KW, ".tables", ".schema", ".examples", ".exit"];
+    return pool.filter(o => o.toLowerCase().startsWith(word.toLowerCase())).map(o => head + o);
+  }
   const parts = val.split(/\s+/);
   if (parts.length <= 1) return Object.keys(COMMANDS).filter(k => !COMMANDS[k].hidden && k.startsWith(parts[0]));
   const [cmd, arg = ""] = parts;
@@ -914,6 +1137,8 @@ function completions(val){
   if (cmd === "open") pool = ["github", "linkedin", "email", ...CV.projects.filter(p => p.url).map(p => p.id)];
   if (cmd === "motion" || cmd === "scanlines") pool = ["on", "off"];
   if (cmd === "projects") pool = ["--all", ...CV.projects.map(p => p.id)];
+  if (cmd === "git") pool = parts.length === 2 ? ["log", "status"] : [];
+  if (cmd === "git" && parts[1] === "log" && parts.length === 3){ return GH_REPOS().filter(r => r.startsWith(parts[2])).map(r => `git log ${r}`); }
   return pool.filter(o => o.startsWith(arg)).map(o => `${cmd} ${o}`);
 }
 
@@ -963,7 +1188,7 @@ function buildChrome(){
     ["class", "Netrunner"],
     ["status", `<span class="pulse"></span>online`],
   ]);
-  const quick = [["whoami", "01"], ["experience", "02"], ["projects", "03"], ["skills", "04"], ["education", "05"], ["contact", "06"]];
+  const quick = [["whoami", "01"], ["experience", "02"], ["projects", "03"], ["skills", "04"], ["education", "05"], ["contact", "06"], ["sql", "07"], ["git log", "08"]];
   const btn = ([cmd, num]) => `<button class="qbtn" data-cmd="${cmd}"><i>${num}</i>${cmd}</button>`;
   $("#qcmds").innerHTML = quick.map(btn).join("") +
     `<button class="qbtn wide" data-cmd="cv"><span>full record</span><i>cv --all</i></button>` +
@@ -974,16 +1199,7 @@ function buildChrome(){
     `<a href="${esc(CV.links.linkedin.url)}" target="_blank" rel="noopener"><span>linkedin</span><span>nathan-conor-lyons ↗</span></a>` +
     `<a href="mailto:${esc(CV.email)}"><span>email</span><span>${esc(CV.email)}</span></a>`;
   $("#sysScan").textContent = root.dataset.scan;
-  const tick = [
-    `<b>nl-os</b> // node cork.ie online`,
-    `stack: ${CV.skills.languages.join(" · ")}`,
-    `now building: <b>Cybrdek</b> (Svelte) + <b>Union City 3D</b> (Godot)`,
-    `studying: <b>MSc in AI</b> @ MTU`,
-    `type <b>help</b> for commands`,
-    `try <b>sudo hire nathan</b>`,
-    `DM of a 3+ year D&amp;D campaign`,
-  ].map(s => `<span>${s}</span>`).join("");
-  $("#ticker").innerHTML = tick + tick;
+  buildTicker();
 
   const P = [];
   P.push(`<h1>${esc(CV.name)}</h1><div class="sub">${esc(CV.role.replace("//", "—"))} · ${esc(CV.location)}<br>${esc(CV.email)} · ${esc(CV.links.github.label)} · ${esc(CV.links.linkedin.label)}</div>`);
@@ -1011,6 +1227,7 @@ renderPs1();
 tickClock(); setInterval(tickClock, 1000);
 setBusy(true);
 chain = chain.then(() => boot()).finally(() => { setBusy(false); flushing = false; if (finePointer) input.focus({ preventScroll: true }); });
+showLatestPush();
 /* deep links: index.html#projects%201  or  #skills;contact */
 decodeURIComponent(location.hash.slice(1)).split(";").map(s => s.trim()).filter(Boolean).forEach(cmd => exec(cmd));
 </script>
