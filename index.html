@@ -493,16 +493,18 @@ const CV = {
     linkedin: { label: "linkedin.com/in/nathan-conor-lyons1999", url: "https://www.linkedin.com/in/nathan-conor-lyons1999/" },
   },
   summary: [
-    "Database engineer at Flowtech, based in Cork. I work with SQL databases and build internal tools that automate business workflows.",
-    "Outside work I build across Java, Python, TypeScript and Svelte/React — simulation engines, game remakes and web apps. Currently doing an MSc in Artificial Intelligence at MTU, on top of a Higher Diploma in Computing (Software Development) from NCI and a BA (Hons) in Digital Humanities & IT from UCC.",
+    "Database engineer at Flowtech, based in Cork. I work in SQL, Python and Power BI and build internal tools that automate business workflows — so far my automations save 10 hours a week.",
+    "Outside work I build across Java, Python, TypeScript and Svelte/React — simulation engines, game remakes and web apps. Currently doing an MSc in Artificial Intelligence at MTU, on top of a Higher Diploma in Computer Science from NCI (First Class Honours) and a BA (Hons) in Digital Humanities & IT from UCC.",
     "Before code, I led teams in retail tech, which is where I picked up problem-solving under pressure, clear communication and a lot of hands-on troubleshooting. I do my best work in creative, fast-moving teams.",
   ],
   experience: [
     {
       when: "Oct 2026 — present", org: "Flowtech", role: "Database Engineer",
+      stack: ["SQL", "Python", "Power BI", "Claude Code"],
       points: [
+        "Automated manual workflows with internal Python tools, saving 10 hours a week",
         "Work with SQL databases day to day — querying, maintaining and reporting on business data",
-        "Build internal tools that automate manual workflows across the business",
+        "Build Power BI reports on company data, and use Claude Code for AI-assisted development",
       ],
     },
   ],
@@ -541,19 +543,19 @@ const CV = {
   ],
   education: [
     { when: "2026 — present", status: "in progress", title: "MSc in Artificial Intelligence",                                org: "Munster Technological University (MTU), Cork" },
-    { when: "2025 — Feb 2026", status: "complete",   title: "Higher Diploma in Science in Computing (Software Development)", org: "National College of Ireland, Dublin" },
-    { when: "2020 — 2024",     status: "complete",   title: "BA (Hons) Digital Humanities & Information Technology",         org: "University College Cork" },
+    { when: "2025 — Feb 2026", status: "complete",   title: "Higher Diploma in Computer Science",                     org: "National College of Ireland, Dublin", grade: "First Class Honours (1.1)" },
+    { when: "2020 — 2024",     status: "complete",   title: "BA (Hons) Digital Humanities & Information Technology", org: "University College Cork",             grade: "Second Class Honours, Grade 1 (2.1)" },
   ],
   skills: {
     "languages": ["SQL", "Java", "Python", "TypeScript", "JavaScript", "C++"],
     "frontend":  ["Svelte", "React", "HTML & CSS", "JavaFX"],
     "backend":   ["Node.js", "Django", "GraphQL", "REST APIs"],
-    "data":      ["SQL Server", "MySQL", "SQLite", "MongoDB"],
-    "tools":     ["Git", "Agile / Scrum", "Figma", "Blender", "Godot", "Unreal Engine 5"],
+    "data":      ["SQL Server", "Power BI", "MySQL", "SQLite", "MongoDB"],
+    "tools":     ["Git", "Claude Code", "Agile / Scrum", "Figma", "Blender", "Godot", "Unreal Engine 5"],
   },
   interests: [
     { title: "Dungeons & Dragons", text: "Dungeon Master of a running campaign for 3+ years" },
-    { title: "Video games",        text: "Volunteer video game journalist, active in the indie dev scene" },
+    { title: "Video games",        text: "Volunteer video game journalist at Smash Jump, active in the indie dev scene" },
     { title: "Art",                text: "Drawing for 15+ years, with a passion for art history" },
   ],
 };
@@ -693,7 +695,7 @@ const R = {
     const L = [h("work history")];
     CV.experience.forEach((e, i) => L.push(rec({
       label: `record ${pad2(i + 1)} // ${esc(e.org)}${draft(e.draft)}`, right: esc(e.when), sel: i === 0,
-      body: `<div class="rec-t">${esc(e.role)}</div><div class="rec-s">${esc(e.org)}</div>${ul(e.points.map(esc))}`,
+      body: `<div class="rec-t">${esc(e.role)}</div><div class="rec-s">${esc(e.org)}</div>${e.stack ? fgrid([["stack", chips(e.stack), true]]) : ""}${ul(e.points.map(esc))}`,
     })));
     L.push("");
     return L;
@@ -731,7 +733,7 @@ const R = {
   education(){
     return [h("education"), ...CV.education.map((e, i) => rec({
       label: `qualification ${pad2(i + 1)}${e.status ? " // " + esc(e.status) : ""}`, right: esc(e.when), sel: e.status === "in progress",
-      body: `<div class="rec-t">${esc(e.title)}</div><div class="rec-s">${esc(e.org)}</div>`,
+      body: `<div class="rec-t">${esc(e.title)}</div><div class="rec-s">${esc(e.org)}${e.grade ? ` · <span class="mint">${esc(e.grade)}</span>` : ""}</div>`,
     })), ""];
   },
   interests(){
@@ -921,13 +923,13 @@ const SQL_KEEP = new Set(["clear", "history", "help", "scanlines", "motion"]);
 
 /* ───────── SQL mode: the CV as a SQLite database (sql.js / WebAssembly) ───────── */
 const SQLJS = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/";
-const SQL_TABLES = ["profile", "experience", "experience_points", "projects", "project_stack", "project_points", "education", "skills", "interests", "project_overview"];
+const SQL_TABLES = ["profile", "experience", "experience_points", "experience_stack", "projects", "project_stack", "project_points", "education", "skills", "interests", "project_overview"];
 const SQL_EXAMPLES = [
   "SELECT * FROM project_overview;",
   "SELECT skill FROM skills WHERE skill LIKE '%SQL%';",
   "SELECT p.title, s.tech FROM projects p JOIN project_stack s ON s.project_id = p.id WHERE s.tech LIKE 'Java%';",
   "SELECT category, COUNT(*) AS skills FROM skills GROUP BY category ORDER BY skills DESC;",
-  "SELECT title, institution, status FROM education ORDER BY id;",
+  "SELECT title, institution, grade FROM education ORDER BY id;",
   "SELECT role, org FROM experience WHERE is_current = 1;",
 ];
 const SQL_KW = ["SELECT", "FROM", "WHERE", "JOIN", "LEFT", "ON", "GROUP", "BY", "ORDER", "LIMIT", "COUNT", "DISTINCT", "LIKE", "AND", "OR", "AS", "DESC", "ASC", "HAVING", "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "group_concat"];
@@ -951,7 +953,8 @@ async function getDb(){
         CREATE TABLE projects (id INTEGER PRIMARY KEY, slug TEXT UNIQUE NOT NULL, title TEXT NOT NULL, year INTEGER, kind TEXT, url TEXT);
         CREATE TABLE project_stack (project_id INTEGER NOT NULL REFERENCES projects(id), tech TEXT NOT NULL);
         CREATE TABLE project_points (project_id INTEGER NOT NULL REFERENCES projects(id), point TEXT NOT NULL);
-        CREATE TABLE education (id INTEGER PRIMARY KEY, title TEXT NOT NULL, institution TEXT, period TEXT, status TEXT);
+        CREATE TABLE experience_stack (experience_id INTEGER NOT NULL REFERENCES experience(id), tech TEXT NOT NULL);
+        CREATE TABLE education (id INTEGER PRIMARY KEY, title TEXT NOT NULL, institution TEXT, period TEXT, status TEXT, grade TEXT);
         CREATE TABLE skills (category TEXT NOT NULL, skill TEXT NOT NULL);
         CREATE TABLE interests (title TEXT NOT NULL, detail TEXT);
         CREATE VIEW project_overview AS
@@ -964,13 +967,14 @@ async function getDb(){
       CV.experience.forEach((e, i) => {
         ins("INSERT INTO experience VALUES (?, ?, ?, ?, ?)", [[i + 1, e.org, e.role, e.when, /present/i.test(e.when) ? 1 : 0]]);
         ins("INSERT INTO experience_points VALUES (?, ?)", e.points.map(x => [i + 1, x]));
+        ins("INSERT INTO experience_stack VALUES (?, ?)", (e.stack || []).map(t => [i + 1, t]));
       });
       CV.projects.forEach((p, i) => {
         ins("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)", [[i + 1, p.id, p.title, parseInt(p.when, 10) || null, p.kind, p.url || null]]);
         ins("INSERT INTO project_stack VALUES (?, ?)", p.stack.map(t => [i + 1, t]));
         ins("INSERT INTO project_points VALUES (?, ?)", p.points.map(x => [i + 1, x]));
       });
-      ins("INSERT INTO education VALUES (?, ?, ?, ?, ?)", CV.education.map((e, i) => [i + 1, e.title, e.org, e.when, e.status || null]));
+      ins("INSERT INTO education VALUES (?, ?, ?, ?, ?, ?)", CV.education.map((e, i) => [i + 1, e.title, e.org, e.when, e.status || null, e.grade || null]));
       ins("INSERT INTO skills VALUES (?, ?)", Object.entries(CV.skills).flatMap(([g, l]) => l.map(x => [g, x])));
       ins("INSERT INTO interests VALUES (?, ?)", CV.interests.map(x => [x.title, x.text]));
       db = d;
@@ -1205,9 +1209,9 @@ function buildChrome(){
   const P = [];
   P.push(`<h1>${esc(CV.name)}</h1><div class="sub">${esc(CV.role.replace("//", "—"))} · ${esc(CV.location)}<br>${esc(CV.email)} · ${esc(CV.links.github.label)} · ${esc(CV.links.linkedin.label)}</div>`);
   P.push(`<section><h2>Profile</h2>${CV.summary.map(s => `<p style="margin:0 0 5pt">${esc(s)}</p>`).join("")}</section>`);
-  P.push(`<section><h2>Experience</h2>${CV.experience.map(e => `<div class="entry"><div class="row"><span>${esc(e.role)} — ${esc(e.org)}</span><span>${esc(e.when)}</span></div><ul>${e.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>`).join("")}</section>`);
+  P.push(`<section><h2>Experience</h2>${CV.experience.map(e => `<div class="entry"><div class="row"><span>${esc(e.role)} — ${esc(e.org)}${e.stack ? ` <span class="meta">· ${esc(e.stack.join(", "))}</span>` : ""}</span><span>${esc(e.when)}</span></div><ul>${e.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>`).join("")}</section>`);
   P.push(`<section><h2>Projects</h2>${CV.projects.map(p => `<div class="entry"><div class="row"><span>${esc(p.title)} <span class="meta">· ${esc(p.kind)} · ${esc(p.stack.join(", "))}</span></span><span>${esc(p.when)}</span></div><ul>${p.points.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}</section>`);
-  P.push(`<section><h2>Education</h2>${CV.education.map(e => `<div class="entry"><div class="row"><span>${esc(e.title)}</span><span>${esc(e.when)}</span></div><div class="meta">${esc(e.org)}</div></div>`).join("")}</section>`);
+  P.push(`<section><h2>Education</h2>${CV.education.map(e => `<div class="entry"><div class="row"><span>${esc(e.title)}</span><span>${esc(e.when)}</span></div><div class="meta">${esc(e.org)}${e.grade ? " · " + esc(e.grade) : ""}</div></div>`).join("")}</section>`);
   P.push(`<section><h2>Skills</h2>${Object.entries(CV.skills).map(([g, l]) => `<div><b style="display:inline-block;min-width:11ch;text-transform:capitalize">${esc(g)}</b>${esc(l.join(", "))}</div>`).join("")}</section>`);
   P.push(`<section><h2>Interests</h2>${CV.interests.map(i => `<div><b>${esc(i.title)}</b> — ${esc(i.text)}</div>`).join("")}</section>`);
   $("#print-cv").innerHTML = P.join("");
